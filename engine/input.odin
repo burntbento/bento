@@ -1,0 +1,424 @@
+package engine
+
+import "core:mem"
+
+
+GameInput :: struct {
+	app_exit_requested: bool,
+
+	// input state management
+	state:              [len(InputType)]f64,
+	pressed:            [len(InputType)]bool,
+	released:           [len(InputType)]bool,
+	mouse_x, mouse_y:   f64,
+}
+
+
+InputType :: enum {
+	INPUT_KEY_A,
+	INPUT_KEY_B,
+	INPUT_KEY_C,
+	INPUT_KEY_D,
+	INPUT_KEY_E,
+	INPUT_KEY_F,
+	INPUT_KEY_G,
+	INPUT_KEY_H,
+	INPUT_KEY_I,
+	INPUT_KEY_J,
+	INPUT_KEY_K,
+	INPUT_KEY_L,
+	INPUT_KEY_M,
+	INPUT_KEY_N,
+	INPUT_KEY_O,
+	INPUT_KEY_P,
+	INPUT_KEY_Q,
+	INPUT_KEY_R,
+	INPUT_KEY_S,
+	INPUT_KEY_T,
+	INPUT_KEY_U,
+	INPUT_KEY_V,
+	INPUT_KEY_W,
+	INPUT_KEY_X,
+	INPUT_KEY_Y,
+	INPUT_KEY_Z,
+	INPUT_KEY_1,
+	INPUT_KEY_2,
+	INPUT_KEY_3,
+	INPUT_KEY_4,
+	INPUT_KEY_5,
+	INPUT_KEY_6,
+	INPUT_KEY_7,
+	INPUT_KEY_8,
+	INPUT_KEY_9,
+	INPUT_KEY_0,
+	INPUT_KEY_RETURN,
+	INPUT_KEY_ESCAPE,
+	INPUT_KEY_BACKSPACE,
+	INPUT_KEY_TAB,
+	INPUT_KEY_SPACE,
+	INPUT_KEY_MINUS,
+	INPUT_KEY_EQUALS,
+	INPUT_KEY_LEFTBRACKET,
+	INPUT_KEY_RIGHTBRACKET,
+	INPUT_KEY_BACKSLASH,
+	INPUT_KEY_NONUSHASH,
+	INPUT_KEY_SEMICOLON,
+	INPUT_KEY_APOSTROPHE,
+	INPUT_KEY_GRAVE,
+	INPUT_KEY_COMMA,
+	INPUT_KEY_PERIOD,
+	INPUT_KEY_SLASH,
+	INPUT_KEY_CAPSLOCK,
+	INPUT_KEY_F1,
+	INPUT_KEY_F2,
+	INPUT_KEY_F3,
+	INPUT_KEY_F4,
+	INPUT_KEY_F5,
+	INPUT_KEY_F6,
+	INPUT_KEY_F7,
+	INPUT_KEY_F8,
+	INPUT_KEY_F9,
+	INPUT_KEY_F10,
+	INPUT_KEY_F11,
+	INPUT_KEY_F12,
+	INPUT_KEY_PRINTSCREEN,
+	INPUT_KEY_SCROLLLOCK,
+	INPUT_KEY_PAUSE,
+	INPUT_KEY_INSERT,
+	INPUT_KEY_HOME,
+	INPUT_KEY_PAGEUP,
+	INPUT_KEY_DELETE,
+	INPUT_KEY_END,
+	INPUT_KEY_PAGEDOWN,
+	INPUT_KEY_RIGHT,
+	INPUT_KEY_LEFT,
+	INPUT_KEY_DOWN,
+	INPUT_KEY_UP,
+	INPUT_KEY_NUMLOCKCLEAR,
+	INPUT_KEY_KP_DIVIDE,
+	INPUT_KEY_KP_MULTIPLY,
+	INPUT_KEY_KP_MINUS,
+	INPUT_KEY_KP_PLUS,
+	INPUT_KEY_KP_ENTER,
+	INPUT_KEY_KP_1,
+	INPUT_KEY_KP_2,
+	INPUT_KEY_KP_3,
+	INPUT_KEY_KP_4,
+	INPUT_KEY_KP_5,
+	INPUT_KEY_KP_6,
+	INPUT_KEY_KP_7,
+	INPUT_KEY_KP_8,
+	INPUT_KEY_KP_9,
+	INPUT_KEY_KP_0,
+	INPUT_KEY_KP_PERIOD,
+	INPUT_KEY_NONUSBACKSLASH,
+	INPUT_KEY_APPLICATION,
+	INPUT_KEY_POWER,
+	INPUT_KEY_KP_EQUALS,
+	INPUT_KEY_F13,
+	INPUT_KEY_F14,
+	INPUT_KEY_F15,
+	INPUT_KEY_F16,
+	INPUT_KEY_F17,
+	INPUT_KEY_F18,
+	INPUT_KEY_F19,
+	INPUT_KEY_F20,
+	INPUT_KEY_F21,
+	INPUT_KEY_F22,
+	INPUT_KEY_F23,
+	INPUT_KEY_F24,
+	INPUT_KEY_EXECUTE,
+	INPUT_KEY_HELP,
+	INPUT_KEY_MENU,
+	INPUT_KEY_SELECT,
+	INPUT_KEY_STOP,
+	INPUT_KEY_AGAIN,
+	INPUT_KEY_UNDO,
+	INPUT_KEY_CUT,
+	INPUT_KEY_COPY,
+	INPUT_KEY_PASTE,
+	INPUT_KEY_FIND,
+	INPUT_KEY_MUTE,
+	INPUT_KEY_VOLUMEUP,
+	INPUT_KEY_VOLUMEDOWN,
+	INPUT_KEY_LOCKINGCAPSLOCK,
+	INPUT_KEY_LOCKINGNUMLOCK,
+	INPUT_KEY_LOCKINGSCROLLLOCK,
+	INPUT_KEY_KP_COMMA,
+	INPUT_KEY_KP_EQUALSAS400,
+	INPUT_KEY_INTERNATIONAL1,
+	INPUT_KEY_INTERNATIONAL2,
+	INPUT_KEY_INTERNATIONAL3,
+	INPUT_KEY_INTERNATIONAL4,
+	INPUT_KEY_INTERNATIONAL5,
+	INPUT_KEY_INTERNATIONAL6,
+	INPUT_KEY_INTERNATIONAL7,
+	INPUT_KEY_INTERNATIONAL8,
+	INPUT_KEY_INTERNATIONAL9,
+	INPUT_KEY_LANG1,
+	INPUT_KEY_LANG2,
+	INPUT_KEY_LANG3,
+	INPUT_KEY_LANG4,
+	INPUT_KEY_LANG5,
+	INPUT_KEY_LANG6,
+	INPUT_KEY_LANG7,
+	INPUT_KEY_LANG8,
+	INPUT_KEY_LANG9,
+	INPUT_KEY_ALTERASE,
+	INPUT_KEY_SYSREQ,
+	INPUT_KEY_CANCEL,
+	INPUT_KEY_CLEAR,
+	INPUT_KEY_PRIOR,
+	INPUT_KEY_RETURN2,
+	INPUT_KEY_SEPARATOR,
+	INPUT_KEY_OUT,
+	INPUT_KEY_OPER,
+	INPUT_KEY_CLEARAGAIN,
+	INPUT_KEY_CRSEL,
+	INPUT_KEY_EXSEL,
+	INPUT_KEY_KP_00,
+	INPUT_KEY_KP_000,
+	INPUT_KEY_THOUSANDSSEPARATOR,
+	INPUT_KEY_DECIMALSEPARATOR,
+	INPUT_KEY_CURRENCYUNIT,
+	INPUT_KEY_CURRENCYSUBUNIT,
+	INPUT_KEY_KP_LEFTPAREN,
+	INPUT_KEY_KP_RIGHTPAREN,
+	INPUT_KEY_KP_LEFTBRACE,
+	INPUT_KEY_KP_RIGHTBRACE,
+	INPUT_KEY_KP_TAB,
+	INPUT_KEY_KP_BACKSPACE,
+	INPUT_KEY_KP_A,
+	INPUT_KEY_KP_B,
+	INPUT_KEY_KP_C,
+	INPUT_KEY_KP_D,
+	INPUT_KEY_KP_E,
+	INPUT_KEY_KP_F,
+	INPUT_KEY_KP_XOR,
+	INPUT_KEY_KP_POWER,
+	INPUT_KEY_KP_PERCENT,
+	INPUT_KEY_KP_LESS,
+	INPUT_KEY_KP_GREATER,
+	INPUT_KEY_KP_AMPERSAND,
+	INPUT_KEY_KP_DBLAMPERSAND,
+	INPUT_KEY_KP_VERTICALBAR,
+	INPUT_KEY_KP_DBLVERTICALBAR,
+	INPUT_KEY_KP_COLON,
+	INPUT_KEY_KP_HASH,
+	INPUT_KEY_KP_SPACE,
+	INPUT_KEY_KP_AT,
+	INPUT_KEY_KP_EXCLAM,
+	INPUT_KEY_KP_MEMSTORE,
+	INPUT_KEY_KP_MEMRECALL,
+	INPUT_KEY_KP_MEMCLEAR,
+	INPUT_KEY_KP_MEMADD,
+	INPUT_KEY_KP_MEMSUBTRACT,
+	INPUT_KEY_KP_MEMMULTIPLY,
+	INPUT_KEY_KP_MEMDIVIDE,
+	INPUT_KEY_KP_PLUSMINUS,
+	INPUT_KEY_KP_CLEAR,
+	INPUT_KEY_KP_CLEARENTRY,
+	INPUT_KEY_KP_BINARY,
+	INPUT_KEY_KP_OCTAL,
+	INPUT_KEY_KP_DECIMAL,
+	INPUT_KEY_KP_HEXADECIMAL,
+	INPUT_KEY_LCTRL,
+	INPUT_KEY_LSHIFT,
+	INPUT_KEY_LALT,
+	INPUT_KEY_LGUI,
+	INPUT_KEY_RCTRL,
+	INPUT_KEY_RSHIFT,
+	INPUT_KEY_RALT,
+	INPUT_KEY_RGUI,
+	INPUT_KEY_MODE,
+	INPUT_KEY_SLEEP,
+	INPUT_KEY_WAKE,
+	INPUT_KEY_CHANNEL_INCREMENT,
+	INPUT_KEY_CHANNEL_DECREMENT,
+	INPUT_KEY_MEDIA_PLAY,
+	INPUT_KEY_MEDIA_PAUSE,
+	INPUT_KEY_MEDIA_RECORD,
+	INPUT_KEY_MEDIA_FAST_FORWARD,
+	INPUT_KEY_MEDIA_REWIND,
+	INPUT_KEY_MEDIA_NEXT_TRACK,
+	INPUT_KEY_MEDIA_PREVIOUS_TRACK,
+	INPUT_KEY_MEDIA_STOP,
+	INPUT_KEY_MEDIA_EJECT,
+	INPUT_KEY_MEDIA_PLAY_PAUSE,
+	INPUT_KEY_MEDIA_SELECT,
+	INPUT_KEY_AC_NEW,
+	INPUT_KEY_AC_OPEN,
+	INPUT_KEY_AC_CLOSE,
+	INPUT_KEY_AC_EXIT,
+	INPUT_KEY_AC_SAVE,
+	INPUT_KEY_AC_PRINT,
+	INPUT_KEY_AC_PROPERTIES,
+	INPUT_KEY_AC_SEARCH,
+	INPUT_KEY_AC_HOME,
+	INPUT_KEY_AC_BACK,
+	INPUT_KEY_AC_FORWARD,
+	INPUT_KEY_AC_STOP,
+	INPUT_KEY_AC_REFRESH,
+	INPUT_KEY_AC_BOOKMARKS,
+	INPUT_KEY_SOFTLEFT,
+	INPUT_KEY_SOFTRIGHT,
+	INPUT_KEY_CALL,
+	INPUT_KEY_ENDCALL,
+	INPUT_MOUSE_BUTTON_LEFT,
+	INPUT_MOUSE_BUTTON_MIDDLE,
+	INPUT_MOUSE_BUTTON_RIGHT,
+	INPUT_MOUSE_BUTTON_X1,
+	INPUT_MOUSE_BUTTON_X2,
+	INPUT_GAMEPAD_BUTTON_A,
+	INPUT_GAMEPAD_BUTTON_B,
+	INPUT_GAMEPAD_BUTTON_X,
+	INPUT_GAMEPAD_BUTTON_Y,
+	INPUT_GAMEPAD_BUTTON_SELECT,
+	INPUT_GAMEPAD_BUTTON_HOME,
+	INPUT_GAMEPAD_BUTTON_START,
+	INPUT_GAMEPAD_BUTTON_LEFT_STICK,
+	INPUT_GAMEPAD_BUTTON_RIGHT_STICK,
+	INPUT_GAMEPAD_BUTTON_LEFT_SHOULDER,
+	INPUT_GAMEPAD_BUTTON_RIGHT_SHOULDER,
+	INPUT_GAMEPAD_BUTTON_DPAD_UP,
+	INPUT_GAMEPAD_BUTTON_DPAD_DOWN,
+	INPUT_GAMEPAD_BUTTON_DPAD_LEFT,
+	INPUT_GAMEPAD_BUTTON_DPAD_RIGHT,
+	INPUT_GAMEPAD_BUTTON_MISC1,
+	INPUT_GAMEPAD_BUTTON_PADDLE1_RIGHT,
+	INPUT_GAMEPAD_BUTTON_PADDLE1_LEFT,
+	INPUT_GAMEPAD_BUTTON_PADDLE2_RIGHT,
+	INPUT_GAMEPAD_BUTTON_PADDLE2_LEFT,
+	INPUT_GAMEPAD_BUTTON_TOUCHPAD,
+	INPUT_GAMEPAD_BUTTON_MISC2,
+	INPUT_GAMEPAD_BUTTON_MISC3,
+	INPUT_GAMEPAD_BUTTON_MISC4,
+	INPUT_GAMEPAD_BUTTON_MISC5,
+	INPUT_GAMEPAD_BUTTON_MISC6,
+	INPUT_GAMEPAD_AXIS_LEFTX,
+	INPUT_GAMEPAD_AXIS_LEFTY,
+	INPUT_GAMEPAD_AXIS_RIGHTX,
+	INPUT_GAMEPAD_AXIS_RIGHTY,
+	INPUT_GAMEPAD_AXIS_LEFT_TRIGGER,
+	INPUT_GAMEPAD_AXIS_RIGHT_TRIGGER,
+	INPUT_GAMEPAD_AXIS_LEFTX_POS,
+	INPUT_GAMEPAD_AXIS_LEFTX_NEG,
+	INPUT_GAMEPAD_AXIS_LEFTY_POS,
+	INPUT_GAMEPAD_AXIS_LEFTY_NEG,
+	INPUT_GAMEPAD_AXIS_RIGHTX_POS,
+	INPUT_GAMEPAD_AXIS_RIGHTX_NEG,
+	INPUT_GAMEPAD_AXIS_RIGHTY_POS,
+	INPUT_GAMEPAD_AXIS_RIGHTY_NEG,
+}
+
+input_state :: proc(input: ^GameInput, type: InputType) -> f64 {
+	return input.state[type]
+}
+
+input_pressed :: proc(input: ^GameInput, type: InputType) -> bool {
+	return input.pressed[type]
+}
+
+input_released :: proc(input: ^GameInput, type: InputType) -> bool {
+	return input.released[type]
+}
+
+
+// Input Mapping
+
+// TODO: save and load bindings config
+InputMapper :: struct {
+	bindings:  map[string]map[InputType]struct{} `json:"bindings"`,
+	state:     ^GameState,
+	allocator: mem.Allocator `json:"-"`,
+}
+
+input_mapper_new :: proc(state: ^GameState, allocator := context.allocator) -> ^InputMapper {
+	input_mapper := new(InputMapper, allocator)
+	input_mapper.allocator = allocator
+	input_mapper.bindings = make(map[string]map[InputType]struct{}, allocator)
+	input_mapper.state = state
+	return input_mapper
+}
+
+input_mapper_destroy :: proc(input_map: ^InputMapper) {
+	allocator := input_map.allocator
+	for _, val in input_map.bindings {
+		delete(val)
+	}
+	delete(input_map.bindings)
+	free(input_map, allocator)
+}
+
+input_mapper_add :: proc(input_map: ^InputMapper, key: string, input_key: ..InputType) {
+	if _, ok := input_map.bindings[key]; !ok {
+		input_map.bindings[key] = make(map[InputType]struct{}, input_map.allocator)
+	}
+	for input in input_key {
+		set := input_map.bindings[key]
+		set[input] = {}
+		input_map.bindings[key] = set
+	}
+}
+
+input_mapper_pressed :: proc(
+	input_map: ^InputMapper,
+	game_input: ^GameInput,
+	key: string,
+) -> bool {
+	if _, ok := input_map.bindings[key]; !ok {
+		return false
+	}
+	bindings := input_map.bindings[key]
+	for bind in bindings {
+		// return first
+		if input_pressed(game_input, bind) {
+			return true
+		}
+	}
+	return false
+}
+
+input_mapper_released :: proc(
+	input_map: ^InputMapper,
+	game_input: ^GameInput,
+	key: string,
+) -> bool {
+	if _, ok := input_map.bindings[key]; !ok {
+		return false
+	}
+	bindings := input_map.bindings[key]
+	for bind in bindings {
+		// return first
+		if input_released(game_input, bind) {
+			return true
+		}
+	}
+	return false
+}
+
+input_mapper_state :: proc(input_map: ^InputMapper, game_input: ^GameInput, key: string) -> f64 {
+	deadzone := input_map.state.platform.get_deadzone()
+	if _, ok := input_map.bindings[key]; !ok {
+		return 0.0
+	}
+	bindings := input_map.bindings[key]
+	for bind in bindings {
+		// return first
+		if input_state(game_input, bind) > 0 + deadzone {
+			return input_state(game_input, bind)
+		}
+	}
+	return 0.0
+}
+
+
+input_mapper_remove :: proc(input_map: ^InputMapper, key: string, input_key: ..InputType) {
+	if _, ok := input_map.bindings[key]; !ok {
+		return
+	}
+	bindings := &input_map.bindings[key]
+	for k in input_key {
+		delete_key(bindings, k)
+	}
+}
