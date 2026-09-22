@@ -17,7 +17,7 @@
 	"profiles": [
 		{
 			"name": "default",
-			"checker_path": [".", "src", "tests"],
+			"checker_path": [".", "src/engine", "src/execute", "src/platform", "tests", "examples"],
 			"checker_args": "-vet -strict-style -vet-tabs"
 		}
 	]
