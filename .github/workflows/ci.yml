@@ -16,24 +16,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache Odin
-        id: cache-odin
-        uses: actions/cache@v4
+      - name: Set up Odin
+        uses: laytan/setup-odin@v2
         with:
-          path: ${{ runner.tool_cache }}/odin
-          key: odin-${{ env.ODIN_VERSION }}-linux-amd64
+          token: ${{ github.token }}
+          release: latest
 
-      - name: Install Odin
-        if: steps.cache-odin.outputs.cache-hit != 'true'
-        run: |
-          url="https://github.com/odin-lang/Odin/releases/download/${ODIN_VERSION}/odin-linux-amd64-${ODIN_VERSION}.tar.gz"
-          curl -sSL "$url" -o odin.tar.gz
-          tar xzf odin.tar.gz
-          mv odin-*-$ODIN_VERSION "${{ runner.tool_cache }}/odin"
-          rm odin.tar.gz
-
-      - name: Add Odin to PATH
-        run: echo "${{ runner.tool_cache }}/odin" >> "$GITHUB_PATH"
+      - name: Verify Odin
+        run: odin version
 
       - name: Cache SDL3
         id: cache-sdl
