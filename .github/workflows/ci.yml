@@ -25,40 +25,66 @@ jobs:
       - name: Verify Odin
         run: odin version
 
+      - name: Build Odin vendor:stb
+        run: "$(odin root)/vendor/stb/src/build_stb.sh"
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            patchelf cmake ninja-build \
+            libasound2-dev libpulse-dev \
+            libx11-dev libxext-dev libxtst-dev libxrandr-dev \
+            libxcursor-dev libxi-dev libxfixes-dev libxss-dev \
+            libgl1-mesa-dev libegl1-mesa-dev \
+            libwayland-dev wayland-protocols libxkbcommon-dev \
+            libdrm-dev libgbm-dev
+
       - name: Cache SDL3
-        id: cache-sdl
+        id: sdl-cache
         uses: actions/cache@v4
         with:
-          path: ~/sdl3-install
-          key: sdl3-${{ env.SDL3_VERSION }}-ttf-${{ env.SDL3_TTF_VERSION }}-ubuntu-2404
+          path: sdl3-prefix
+          key: sdl3-linux-${{ steps.versions.outputs.sdl3 }}-ttf-${{ steps.versions.outputs.sdl3_ttf }}
 
-      - name: Build SDL3
-        if: steps.cache-sdl.outputs.cache-hit != 'true'
+      - name: Build SDL3 and SDL3_ttf
+        if: steps.sdl-cache.outputs.cache-hit != 'true'
         run: |
-          SDL3_MAJOR=$(echo "$SDL3_VERSION" | cut -d. -f1)
-          SDL3_TTF_MAJOR=$(echo "$SDL3_TTF_VERSION" | cut -d. -f1)
-          curl -sSL "https://github.com/libsdl-org/SDL/archive/refs/tags/release-${SDL3_VERSION}.tar.gz" | tar xz
-          curl -sSL "https://github.com/libsdl-org/SDL_ttf/archive/refs/tags/release-${SDL3_TTF_VERSION}.tar.gz" | tar xz
-          mkdir -p ~/sdl3-install
+          set -euo pipefail
 
-          cmake -S "SDL-release-${SDL3_VERSION}" -B sdl3-build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX="$HOME/sdl3-install"
-          cmake --build sdl3-build --parallel
-          cmake --install sdl3-build
+          SDL3_VERSION="${{ steps.versions.outputs.sdl3 }}"
+          SDL3_TTF_VERSION="${{ steps.versions.outputs.sdl3_ttf }}"
 
-          cmake -S "SDL_ttf-release-${SDL3_TTF_VERSION}" -B sdl3-ttf-build \
+          git clone --depth 1 \
+            --branch "$SDL3_VERSION" \
+            https://github.com/libsdl-org/SDL.git \
+            sdl-src
+
+          cmake -S sdl-src -B sdl-build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="$HOME/sdl3-install" \
+            -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/sdl3-prefix" \
+            -DSDL_STATIC=OFF \
+            -DSDL_TEST_LIBRARY=OFF
+
+          cmake --build sdl-build
+          cmake --install sdl-build
+
+          git clone --depth 1 \
+            --recursive \
+            --shallow-submodules \
+            --branch "$SDL3_TTF_VERSION" \
+            https://github.com/libsdl-org/SDL_ttf.git \
+            sdl-ttf-src
+
+          cmake -S sdl-ttf-src -B sdl-ttf-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/sdl3-prefix" \
+            -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/sdl3-prefix" \
             -DSDLTTF_VENDORED=ON \
-            -DCMAKE_INSTALL_PREFIX="$HOME/sdl3-install"
-          cmake --build sdl3-ttf-build --parallel
-          cmake --install sdl3-ttf-build
+            -DSDLTTF_SAMPLES=OFF
 
-      - name: Install SDL3 system-wide
-        run: |
-          sudo cp -r ~/sdl3-install/* /usr/local/
-          sudo ldconfig
+          cmake --build sdl-ttf-build
+          cmake --install sdl-ttf-build
 
       - name: Vet + test (debug)
         run: odin test tests/ -collection:bento=src -vet -strict-style -vet-tabs
