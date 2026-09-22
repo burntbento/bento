@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  ODIN_VERSION: dev-2026-09
+  SDL3_VERSION: "3.4.16"
+  SDL3_TTF_VERSION: "3.2.2"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Odin
+        id: cache-odin
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.tool_cache }}/odin
+          key: odin-${{ env.ODIN_VERSION }}-linux-amd64
+
+      - name: Install Odin
+        if: steps.cache-odin.outputs.cache-hit != 'true'
+        run: |
+          url="https://github.com/odin-lang/Odin/releases/download/${ODIN_VERSION}/odin-linux-amd64-${ODIN_VERSION}.tar.gz"
+          curl -sSL "$url" -o odin.tar.gz
+          tar xzf odin.tar.gz
+          mv odin-*-$ODIN_VERSION "${{ runner.tool_cache }}/odin"
+          rm odin.tar.gz
+
+      - name: Add Odin to PATH
+        run: echo "${{ runner.tool_cache }}/odin" >> "$GITHUB_PATH"
+
+      - name: Cache SDL3
+        id: cache-sdl
+        uses: actions/cache@v4
+        with:
+          path: ~/sdl3-install
+          key: sdl3-${{ env.SDL3_VERSION }}-ttf-${{ env.SDL3_TTF_VERSION }}-ubuntu-2404
+
+      - name: Build SDL3
+        if: steps.cache-sdl.outputs.cache-hit != 'true'
+        run: |
+          SDL3_MAJOR=$(echo "$SDL3_VERSION" | cut -d. -f1)
+          SDL3_TTF_MAJOR=$(echo "$SDL3_TTF_VERSION" | cut -d. -f1)
+          curl -sSL "https://github.com/libsdl-org/SDL/archive/refs/tags/release-${SDL3_VERSION}.tar.gz" | tar xz
+          curl -sSL "https://github.com/libsdl-org/SDL_ttf/archive/refs/tags/release-${SDL3_TTF_VERSION}.tar.gz" | tar xz
+          mkdir -p ~/sdl3-install
+
+          cmake -S "SDL-release-${SDL3_VERSION}" -B sdl3-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$HOME/sdl3-install"
+          cmake --build sdl3-build --parallel
+          cmake --install sdl3-build
+
+          cmake -S "SDL_ttf-release-${SDL3_TTF_VERSION}" -B sdl3-ttf-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$HOME/sdl3-install" \
+            -DSDLTTF_VENDORED=ON \
+            -DCMAKE_INSTALL_PREFIX="$HOME/sdl3-install"
+          cmake --build sdl3-ttf-build --parallel
+          cmake --install sdl3-ttf-build
+
+      - name: Install SDL3 system-wide
+        run: |
+          sudo cp -r ~/sdl3-install/* /usr/local/
+          sudo ldconfig
+
+      - name: Vet + test (debug)
+        run: odin test tests/ -collection:bento=src -vet -strict-style -vet-tabs
+
+      - name: Compile check (release)
+        run: odin test tests/ -collection:bento=src -o:speed
