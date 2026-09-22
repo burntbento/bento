@@ -6,7 +6,6 @@ on:
   pull_request:
 
 env:
-  ODIN_VERSION: dev-2026-09
   SDL3_VERSION: "3.4.16"
   SDL3_TTF_VERSION: "3.2.2"
 
@@ -45,18 +44,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: sdl3-prefix
-          key: sdl3-linux-${{ steps.versions.outputs.sdl3 }}-ttf-${{ steps.versions.outputs.sdl3_ttf }}
+          key: sdl3-linux-${{ env.SDL3_VERSION }}-ttf-${{ env.SDL3_TTF_VERSION }}
 
       - name: Build SDL3 and SDL3_ttf
         if: steps.sdl-cache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
 
-          SDL3_VERSION="${{ steps.versions.outputs.sdl3 }}"
-          SDL3_TTF_VERSION="${{ steps.versions.outputs.sdl3_ttf }}"
-
           git clone --depth 1 \
-            --branch "$SDL3_VERSION" \
+            --branch "release-${SDL3_VERSION}" \
             https://github.com/libsdl-org/SDL.git \
             sdl-src
 
@@ -72,7 +68,7 @@ jobs:
           git clone --depth 1 \
             --recursive \
             --shallow-submodules \
-            --branch "$SDL3_TTF_VERSION" \
+            --branch "release-${SDL3_TTF_VERSION}" \
             https://github.com/libsdl-org/SDL_ttf.git \
             sdl-ttf-src
 
