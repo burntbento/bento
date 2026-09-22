@@ -1,0 +1,27 @@
+# Odin build output
+*.exe
+*.pdb
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.spall
+.DS_Store
+
+# vendoring for clay
+!src/engine/vendor/clay-odin/**/*.a
+!src/engine/vendor/clay-odin/**/*.lib
+!src/engine/vendor/clay-odin/**/*.o
+
+
+# Debug output
+*.dSYM/
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
