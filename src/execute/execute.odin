@@ -7,10 +7,11 @@ import "bento:engine"
 import "bento:platform"
 
 Game :: struct {
-	game_init:     proc(platform_data: ^engine.Platform),
-	game_update:   proc(input: ^engine.GameInput, dt: f64) -> bool,
-	game_render:   proc() -> ^engine.RenderCommandBuffer,
-	game_shutdown: proc(),
+	platform_config: engine.PlatformConfig,
+	game_init:       proc(platform_data: ^engine.Platform),
+	game_update:     proc(input: ^engine.GameInput, dt: f64) -> bool,
+	game_render:     proc() -> ^engine.RenderCommandBuffer,
+	game_shutdown:   proc(),
 }
 
 engine_run :: proc(game_data: ^Game) {
@@ -40,7 +41,7 @@ engine_run :: proc(game_data: ^Game) {
 	engine.profiler_init()
 	defer engine.profiler_shutdown()
 
-	platform.init()
+	platform.init(game_data.platform_config)
 
 	platform_data := engine.Platform {
 		get_file_size                    = platform.get_file_size,

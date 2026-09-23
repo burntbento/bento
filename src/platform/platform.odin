@@ -83,10 +83,6 @@ ORG :: "RATLUDU"
 // For the user platform storage
 APP :: "CROMBUCKLE"
 
-// set window width and height
-WINDOW_WIDTH :: 1920 / 2
-WINDOW_HEIGHT :: 1080 / 2
-
 MAX_CONCURRENT_AUDIO_STREAMS :: 32
 PLACEHOLDER_TEXTURE_HANDLE :: -1
 
@@ -101,12 +97,46 @@ DEADZONE: f64
 
 NUM_CIRCLE_SEGMENTS :: 48
 
+
+@(private)
+ParsedPlatformConfig :: struct {
+	title:         cstring,
+	window_width:  c.int,
+	window_height: c.int,
+	flags:         sdl.WindowFlags,
+}
+
+@(private)
+parse_platform_config :: proc(config: engine.PlatformConfig) -> ParsedPlatformConfig {
+
+	title, err := strings.clone_to_cstring(config.title)
+	if err != nil {
+		panic("Failed to load config")
+	}
+
+	flags: sdl.WindowFlags = {.HIGH_PIXEL_DENSITY}
+	if config.fullscreen {
+		flags += {.FULLSCREEN}
+	}
+
+	return ParsedPlatformConfig {
+		title = title,
+		window_height = c.int(config.window_height),
+		window_width = c.int(config.window_width),
+		flags = flags,
+	}
+}
+
 /*
    **Init**
 
    Platform initialisation procedure. It should initialise anything platorm related at startup. This includes window, renderer, audio and input etc. Anything initialised here should be paired with a equivalent destroy proc in `destory`.
 */
-init :: proc() {
+init :: proc(config: engine.PlatformConfig) {
+	// parse config
+	parsed_config := parse_platform_config(config)
+	defer delete(parsed_config.title)
+
 	// INFO: set log verbosiity, turn off in production, should we write somewhere?
 	sdl.SetLogPriorities(.VERBOSE)
 
@@ -119,8 +149,12 @@ init :: proc() {
 		panic("initialisation error: failed to initialise SDL")
 	}
 
-	flags: sdl.WindowFlags = sdl.WINDOW_HIGH_PIXEL_DENSITY | sdl.WINDOW_FULLSCREEN
-	window = sdl.CreateWindow("Game", WINDOW_WIDTH, WINDOW_HEIGHT, flags)
+	window = sdl.CreateWindow(
+		parsed_config.title,
+		parsed_config.window_height,
+		parsed_config.window_width,
+		parsed_config.flags,
+	)
 	if (window == nil) {
 		sdl.LogError(
 			cast(i32)sdl.LogCategory.CUSTOM,

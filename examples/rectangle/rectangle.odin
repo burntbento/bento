@@ -17,11 +17,19 @@ screen_height: int // height of the screen in pixels
 
 main :: proc() {
 	// main proc, set game function pointers
+	platform_config := engine.PlatformConfig {
+		title         = "rectangle",
+		window_width  = 600,
+		window_height = 800,
+		fullscreen    = false,
+	}
+
 	game_data := execute.Game {
-		game_init     = init,
-		game_update   = update,
-		game_render   = render,
-		game_shutdown = shutdown,
+		platform_config = platform_config,
+		game_init       = init,
+		game_update     = update,
+		game_render     = render,
+		game_shutdown   = shutdown,
 	}
 
 	// start main loop
@@ -37,7 +45,7 @@ init :: proc(platform: ^engine.Platform) {
 	state = new(engine.GameState)
 
 	// create new command buffer
-	state.cmdbuf = new(engine.RenderCommandBuffer)
+	state.cmdbuf = engine.rendercommandbuffer_new()
 
 	// point state to platform
 	state.platform = platform
@@ -79,7 +87,10 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 shutdown :: proc() {
 
 	// free cmd_buffer
-	engine.cmd_destroy(state.cmdbuf)
+	engine.rendercommandbuffer_destroy(state.cmdbuf)
+
+	state.platform.destroy_all_textures()
+	state.platform.destroy_all_fonts()
 
 	// free state
 	free(state)

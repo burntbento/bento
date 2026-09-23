@@ -117,6 +117,17 @@ cmd_destroy :: proc(cmdbuf: ^RenderCommandBuffer) {
 	delete(cmdbuf.commands)
 }
 
+rendercommandbuffer_new :: proc() -> ^RenderCommandBuffer {
+	cmdbuf := new(RenderCommandBuffer)
+	cmdbuf.commands = make([dynamic]RenderCommand)
+	return cmdbuf
+}
+
+rendercommandbuffer_destroy :: proc(cmdbuf: ^RenderCommandBuffer) {
+	cmd_destroy(cmdbuf)
+	free(cmdbuf)
+}
+
 // command interfaces
 
 // sends a single color to clear screen
