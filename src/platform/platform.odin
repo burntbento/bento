@@ -151,8 +151,8 @@ init :: proc(config: engine.PlatformConfig) {
 
 	window = sdl.CreateWindow(
 		parsed_config.title,
-		parsed_config.window_height,
 		parsed_config.window_width,
+		parsed_config.window_height,
 		parsed_config.flags,
 	)
 	if (window == nil) {
