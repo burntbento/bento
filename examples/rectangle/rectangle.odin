@@ -89,9 +89,6 @@ shutdown :: proc() {
 	// free cmd_buffer
 	engine.rendercommandbuffer_destroy(state.cmdbuf)
 
-	state.platform.destroy_all_textures()
-	state.platform.destroy_all_fonts()
-
 	// free state
 	free(state)
 }

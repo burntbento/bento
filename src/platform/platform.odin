@@ -76,6 +76,7 @@ text_buffer_len: int // text buffer length
 
 
 // **ORG**
+// TODO: move to config
 // For the user platform storage
 ORG :: "RATLUDU"
 
@@ -1021,6 +1022,12 @@ shutdown :: proc() {
 		sdl.CloseGamepad(gamepad)
 		gamepad = nil
 	}
+
+	// destory textures
+	destroy_all_textures()
+
+	// destory fonts
+	destroy_all_fonts()
 
 
 	// shutdown audio
