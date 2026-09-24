@@ -1,5 +1,15 @@
 package engine
 
+
+// used to set settings
+// of platform layer
+PlatformConfig :: struct {
+	title:         string,
+	window_width:  int,
+	window_height: int,
+	fullscreen:    bool,
+}
+
 Platform :: struct {
 	// memory
 	allocate_memory:                  proc(size: int) -> rawptr, // NOTE: not sure if ill use these
