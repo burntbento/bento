@@ -42,7 +42,11 @@ main :: proc() {
 init :: proc(platform: ^engine.Platform) {
 
 	// create new instance of gamestate
-	state = new(engine.GameState)
+	err: engine.Error
+	state, err = engine.game_state_new()
+	if err != nil {
+		panic(engine.fmt_error(err, context.temp_allocator))
+	}
 
 	// create new command buffer
 	state.cmdbuf = engine.rendercommandbuffer_new()
@@ -87,8 +91,8 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 shutdown :: proc() {
 
 	// free cmd_buffer
-	free(state.cmdbuf)
+	engine.rendercommandbuffer_destroy(state.cmdbuf)
 
 	// free state
-	free(state)
+	engine.game_state_destroy(state)
 }

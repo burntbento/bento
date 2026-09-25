@@ -119,9 +119,14 @@ cmd_reset :: proc(cmdbuf: ^RenderCommandBuffer) {
 }
 
 
+// Must be destroyed with rendercommand_destroy
 rendercommandbuffer_new :: proc() -> ^RenderCommandBuffer {
 	cmdbuf := new(RenderCommandBuffer)
 	return cmdbuf
+}
+
+rendercommandbuffer_destroy :: proc(cmdbuf: ^RenderCommandBuffer) {
+	free(cmdbuf)
 }
 
 

@@ -1,5 +1,6 @@
 package engine
 
+import "base:runtime"
 import "core:mem"
 import vmem "core:mem/virtual"
 
@@ -20,4 +21,16 @@ GameState :: struct {
 Storage :: enum {
 	FILE,
 	USER,
+}
+
+game_state_new :: proc(loc := #caller_location) -> (^GameState, Error) {
+	state, err := new(GameState)
+	if err != nil {
+		return nil, RUNTIME_ERROR{message = "allocation error", code = int(err), location = loc}
+	}
+	return state, nil
+}
+
+game_state_destroy :: proc(game_state: ^GameState) {
+	free(game_state)
 }
