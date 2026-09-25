@@ -19,8 +19,8 @@ main :: proc() {
 	// main proc, set game function pointers
 	platform_config := engine.PlatformConfig {
 		title         = "rectangle",
-		window_width  = 600,
-		window_height = 800,
+		window_width  = 800,
+		window_height = 600,
 		fullscreen    = false,
 	}
 
@@ -61,7 +61,7 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 render :: proc() -> ^engine.RenderCommandBuffer {
 	// reset command buffer, it is being allocated in the hot loop
 	// resetting here makes sure that memory doesnt build up
-	clear(&state.cmdbuf.commands)
+	engine.cmd_reset(state.cmdbuf)
 
 
 	// set rect width
@@ -87,7 +87,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 shutdown :: proc() {
 
 	// free cmd_buffer
-	engine.rendercommandbuffer_destroy(state.cmdbuf)
+	free(state.cmdbuf)
 
 	// free state
 	free(state)
