@@ -1,10 +1,10 @@
-/** Generated with odin version dev-2026-09 (vendor "odin") Linux_amd64 @ 2026-09-26 04:44:50.885567957 +0000 UTC */
+/** Generated with odin version dev-2026-09 (vendor "odin") Linux_amd64 @ 2026-09-26 05:44:46.090433460 +0000 UTC */
 var odin_pkg_data = {
 "packages": {
 	"engine": {
 		"name": "engine",
 		"collection": "bento",
-		"path": "/bento/engine",
+		"path": "/bento/bento/engine",
 		"entities": [
 			{"kind": "t", "name": "Animation"},
 			{"kind": "t", "name": "AnimationState"},
@@ -276,7 +276,7 @@ var odin_pkg_data = {
 	"clay": {
 		"name": "clay",
 		"collection": "bento",
-		"path": "/bento/engine/vendor/clay-odin",
+		"path": "/bento/bento/engine/vendor/clay-odin",
 		"entities": [
 			{"kind": "t", "name": "Arena"},
 			{"kind": "t", "name": "AspectRatioElementConfig"},
@@ -406,7 +406,7 @@ var odin_pkg_data = {
 	"platform": {
 		"name": "platform",
 		"collection": "bento",
-		"path": "/bento/platform",
+		"path": "/bento/bento/platform",
 		"entities": [
 			{"kind": "c", "name": "APP"},
 			{"kind": "v", "name": "DEADZONE"},
