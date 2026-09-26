@@ -12,9 +12,14 @@ docs-build:
 docs-serve:
 	npx wrangler dev
 
-
 docs-clean:
 	rm -rf website
+
+docs-build-serve:
+	$(MAKE) docs-clean
+	$(MAKE) docs-build
+	$(MAKE) docs-serve
+
 
 
 

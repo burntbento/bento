@@ -129,8 +129,6 @@ parse_platform_config :: proc(config: engine.PlatformConfig) -> ParsedPlatformCo
 }
 
 /*
-   **Init**
-
    Platform initialisation procedure. It should initialise anything platorm related at startup. This includes window, renderer, audio and input etc. Anything initialised here should be paired with a equivalent destroy proc in `destory`.
 */
 init :: proc(config: engine.PlatformConfig) {
@@ -999,6 +997,10 @@ safe_get_texture :: #force_inline proc(handle: int) -> ^sdl.Texture {
 	return textures[handle]
 }
 
+
+/*
+	 Destroys all textures, should always be called as a placeholder is created in the init procedure.
+*/
 destroy_all_textures :: proc() {
 	for tex in textures {
 		sdl.DestroyTexture(tex)
