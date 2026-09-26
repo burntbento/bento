@@ -1,8 +1,7 @@
 package engine
 
 
-// used to set settings
-// of platform layer
+// PlatformConfig is used to set settings of platform layer
 PlatformConfig :: struct {
 	title:         string,
 	window_width:  int,
@@ -10,6 +9,7 @@ PlatformConfig :: struct {
 	fullscreen:    bool,
 }
 
+// Platform is a v table that is filled in the execute logic
 Platform :: struct {
 	// memory
 	allocate_memory:                  proc(size: int) -> rawptr, // NOTE: not sure if ill use these

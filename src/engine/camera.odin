@@ -2,17 +2,18 @@ package engine
 
 import "core:math"
 
-lerpSmoother :: struct {
+LerpSmoother :: struct {
 	speed: f64,
 }
 
-linearSmoother :: struct {
+// linearSmoother lerps uniformly from src to dst
+LinearSmoother :: struct {
 	speed: f64,
 }
 
 Smoother :: union {
-	lerpSmoother,
-	linearSmoother,
+	LerpSmoother,
+	LinearSmoother,
 }
 
 Camera2D :: struct {
@@ -68,9 +69,9 @@ update_smoother_linear :: proc(cam: ^Camera2D, dx, dy, speed, dt: f64) {
 camera_update_smoother :: proc(cam: ^Camera2D, target: Vector2, dt: f64) {
 	dx, dy := target.x - cam.target.x, target.y - cam.target.y
 	switch v in cam.smoother {
-	case lerpSmoother:
+	case LerpSmoother:
 		update_smoother_lerp(cam, dx, dy, v.speed, dt)
-	case linearSmoother:
+	case LinearSmoother:
 		update_smoother_linear(cam, dx, dy, v.speed, dt)
 	case:
 		cam.target.x = target.x
