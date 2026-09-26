@@ -27,3 +27,6 @@
 .vscode/
 *.swp
 *.swo
+
+website/*
+docs/*.odin-doc

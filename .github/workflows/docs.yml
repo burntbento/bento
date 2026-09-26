@@ -1,0 +1,53 @@
+name: Deploy docs to Cloudflare Pages
+
+# Sets up to deploy when a new commit is pushed to the main branch, or when you click
+# run in the GitHub UI.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Makes sure there is only one deployment running at a time.
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  docs:
+    # Environment that the action deploys to.
+    environment:
+      name: cloudflare-pages
+      url: ${{ steps.deployment.outputs.deployment-url }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Odin
+        uses: laytan/setup-odin@v2
+        with:
+          token: ${{ github.token }}
+          release: latest
+
+      - name: Get commonmark
+        run: sudo apt-get update && sudo apt-get install -y libcmark-dev
+
+      - name: Get and build Odin docs generator
+        run: |
+          git clone --depth 1 https://github.com/odin-lang/pkg.odin-lang.org "$RUNNER_TEMP/odin-doc"
+          odin build "$RUNNER_TEMP/odin-doc" -out:"$RUNNER_TEMP/bin/odin-doc"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Generate documentation
+        run: make docs-build
+
+      - name: Deploy to Cloudflare Pages
+        id: deployment
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ./website/static --project-name=bento
