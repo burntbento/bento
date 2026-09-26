@@ -1,0 +1,20 @@
+{
+	"hide_core": true,
+	"hide_base": true,
+	"collections": {
+		"bento": {
+			"name": "bento",
+			"source_url": "https://github.com/burntbento/bento/blob/main",
+			"base_url": "/bento",
+			"root_path": "../../src",
+			"license": {
+				"text": "zlib",
+				"url": "https://github.com/odin-lang/Odin/tree/master/LICENSE"
+			},
+			"home": {
+				"title": "Bento Engine",
+				"embed_readme": "../../README.md"
+			}
+		}
+	}
+}
