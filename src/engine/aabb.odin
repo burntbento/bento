@@ -1,3 +1,11 @@
+package engine
+
+import "core:fmt"
+import "core:math"
+import "core:mem"
+import "core:slice"
+import "core:testing"
+
 /*
   This software is based on bump.lua by Enrique García Cota
   https://github.com/kikito/bump.lua
@@ -34,13 +42,6 @@
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-package engine
-
-import "core:fmt"
-import "core:math"
-import "core:mem"
-import "core:slice"
-import "core:testing"
 
 /*
    Constants
@@ -364,7 +365,7 @@ grid_to_cell_rect :: proc(cell_size, x, y, w, h: f64) -> (int, int, int, int) {
 }
 
 /*
-   Responses 
+   Responses
 */
 
 @(private)
