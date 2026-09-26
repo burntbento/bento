@@ -32,6 +32,9 @@ jobs:
           token: ${{ github.token }}
           release: latest
 
+      - name: Build Odin vendor:stb
+        run: "$(odin root)/vendor/stb/src/build_stb.sh"
+
       - name: Get commonmark
         run: sudo apt-get update && sudo apt-get install -y libcmark-dev
 
