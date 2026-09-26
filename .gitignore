@@ -11,8 +11,6 @@
 *.spall
 .DS_Store
 
-website
-docs/*.odin-doc
 .wrangler
 
 # vendoring for clay
