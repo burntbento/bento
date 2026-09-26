@@ -32,25 +32,6 @@ Platform :: struct {
 	pop_canvas:                       proc(),
 	destroy_all_textures:             proc(),
 	get_window_size:                  proc() -> (int, int),
-	/*
-Whether the given string is "example"
-
-**Does not allocate**
-
-Inputs:
-- bar: The string to check
-
-Returns:
-- ok: A boolean indicating whether bar is "example"
-
-Example:
-	foo("example")
-	foo("bar")
-
-Output:
-	true
-	false
-*/
 	get_render_size:                  proc() -> (int, int),
 
 	// audio
