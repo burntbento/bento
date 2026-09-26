@@ -99,23 +99,23 @@
 <div class="row odin-main my-4" id="pkg">
 <nav id="pkg-sidebar" class="col-lg-2 odin-sidebar-border navbar-light sticky-top odin-below-navbar">
 <div class="py-3">
-<div>Current Package: <em><a href="/bento/bento/platform">platform</a></em></div><br>
-<h4><a style="text-transform: capitalize; color: inherit;" href="/bento/bento">bento Library</a></h4>
+<div>Current Package: <em><a href="/bento/platform">platform</a></em></div><br>
+<h4><a style="text-transform: capitalize; color: inherit;" href="/bento">bento Library</a></h4>
 <ul>
-<li class="nav-item"><a href="/bento/bento/engine">engine</a><ul>
-<li><a href="/bento/bento/engine/vendor/clay-odin">vendor/clay-odin</a></li>
+<li class="nav-item"><a href="/bento/engine">engine</a><ul>
+<li><a href="/bento/engine/vendor/clay-odin">vendor/clay-odin</a></li>
 </ul>
 
 </li>
-<li class="nav-item"><a class="active" href="/bento/bento/platform">platform</a></li>
+<li class="nav-item"><a class="active" href="/bento/platform">platform</a></li>
 </ul>
 </div>
 </nav>
 <article class="col-lg-8 p-4 documentation odin-article">
 <nav class="pkg-breadcrumb" aria-label="breadcrumb">
 <ol class="breadcrumb">
-<li class="breadcrumb-item"><a href="/bento/bento">bento</a></li>
-<li class="breadcrumb-item active" aria-current="page"><a href="/bento/bento/platform">platform</a></li>
+<li class="breadcrumb-item"><a href="/bento">bento</a></li>
+<li class="breadcrumb-item active" aria-current="page"><a href="/bento/platform">platform</a></li>
 </ol>
 </nav>
 <h1>package bento:platform<div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform"><em>Source</em></a></div></h1>
@@ -306,8 +306,8 @@ Procedure Groups (0)</summary>
 <h3 id="PlatformStorage"><span><a class="doc-id-link" href="#PlatformStorage">PlatformStorage<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L38"><em>Source</em></a></div></h3>
 <div>
 <pre class="doc-code">PlatformStorage :: <span class="keyword-type">struct</span> {
-	title:    ^sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#Storage">Storage</a>,
-	writable: ^sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#Storage">Storage</a>,
+	title:    ^sdl3.<a class="code-typename" href="/vendor/sdl3/#Storage">Storage</a>,
+	writable: ^sdl3.<a class="code-typename" href="/vendor/sdl3/#Storage">Storage</a>,
 }</pre>
 </div>
 <details class="odin-doc-toggle" open>
@@ -322,8 +322,8 @@ Procedure Groups (0)</summary>
 <h3 id="ShaderData"><span><a class="doc-id-link" href="#ShaderData">ShaderData<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L56"><em>Source</em></a></div></h3>
 <div>
 <pre class="doc-code">ShaderData :: <span class="keyword-type">struct</span> {
-	shader: ^sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#GPUShader">GPUShader</a>,
-	state:  ^sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#GPURenderState">GPURenderState</a>,
+	shader: ^sdl3.<a class="code-typename" href="/vendor/sdl3/#GPUShader">GPUShader</a>,
+	state:  ^sdl3.<a class="code-typename" href="/vendor/sdl3/#GPURenderState">GPURenderState</a>,
 }</pre>
 </div>
 </div>
@@ -403,7 +403,7 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="audio_device"><span><a class="doc-id-link" href="#audio_device">audio_device<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L68"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">audio_device: sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#AudioDeviceID">AudioDeviceID</a></pre>
+<pre class="doc-code">audio_device: sdl3.<a class="code-typename" href="/vendor/sdl3/#AudioDeviceID">AudioDeviceID</a></pre>
 </div>
 <details class="odin-doc-toggle" open>
 <summary class="hideme"><span>&nbsp;</span></summary>
@@ -413,13 +413,13 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="current_canvas"><span><a class="doc-id-link" href="#current_canvas">current_canvas<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L72"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">current_canvas: ^sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#Texture">Texture</a></pre>
+<pre class="doc-code">current_canvas: ^sdl3.<a class="code-typename" href="/vendor/sdl3/#Texture">Texture</a></pre>
 </div>
 </div>
 <div class="pkg-entity">
 <h3 id="device"><span><a class="doc-id-link" href="#device">device<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L53"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">device: ^sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#GPUDevice">GPUDevice</a></pre>
+<pre class="doc-code">device: ^sdl3.<a class="code-typename" href="/vendor/sdl3/#GPUDevice">GPUDevice</a></pre>
 </div>
 <details class="odin-doc-toggle" open>
 <summary class="hideme"><span>&nbsp;</span></summary>
@@ -429,7 +429,7 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="fonts"><span><a class="doc-id-link" href="#fonts">fonts<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L94"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">fonts: [<span class="keyword">dynamic</span>]^sdl3_ttf.<a class="code-typename" href="/bento/vendor/sdl3/ttf/#Font">Font</a></pre>
+<pre class="doc-code">fonts: [<span class="keyword">dynamic</span>]^sdl3_ttf.<a class="code-typename" href="/vendor/sdl3/ttf/#Font">Font</a></pre>
 </div>
 <details class="odin-doc-toggle" open>
 <summary class="hideme"><span>&nbsp;</span></summary>
@@ -439,13 +439,13 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="formats"><span><a class="doc-id-link" href="#formats">formats<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L54"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">formats: sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#GPUShaderFormat">GPUShaderFormat</a></pre>
+<pre class="doc-code">formats: sdl3.<a class="code-typename" href="/vendor/sdl3/#GPUShaderFormat">GPUShaderFormat</a></pre>
 </div>
 </div>
 <div class="pkg-entity">
 <h3 id="gamepad"><span><a class="doc-id-link" href="#gamepad">gamepad<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L66"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">gamepad: ^sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#Gamepad">Gamepad</a></pre>
+<pre class="doc-code">gamepad: ^sdl3.<a class="code-typename" href="/vendor/sdl3/#Gamepad">Gamepad</a></pre>
 </div>
 <details class="odin-doc-toggle" open>
 <summary class="hideme"><span>&nbsp;</span></summary>
@@ -455,7 +455,7 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="placeholder_texture"><span><a class="doc-id-link" href="#placeholder_texture">placeholder_texture<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L90"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">placeholder_texture: ^sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#Texture">Texture</a></pre>
+<pre class="doc-code">placeholder_texture: ^sdl3.<a class="code-typename" href="/vendor/sdl3/#Texture">Texture</a></pre>
 </div>
 <details class="odin-doc-toggle" open>
 <summary class="hideme"><span>&nbsp;</span></summary>
@@ -465,7 +465,7 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="platform_storage"><span><a class="doc-id-link" href="#platform_storage">platform_storage<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L67"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">platform_storage: ^<a class="code-typename" href="/bento/bento/platform/#PlatformStorage">PlatformStorage</a></pre>
+<pre class="doc-code">platform_storage: ^<a class="code-typename" href="/bento/platform/#PlatformStorage">PlatformStorage</a></pre>
 </div>
 <details class="odin-doc-toggle" open>
 <summary class="hideme"><span>&nbsp;</span></summary>
@@ -475,7 +475,7 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="render_cam"><span><a class="doc-id-link" href="#render_cam">render_cam<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L69"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">render_cam: ^engine.<a class="code-typename" href="/bento/bento/engine/#Camera2D">Camera2D</a></pre>
+<pre class="doc-code">render_cam: ^engine.<a class="code-typename" href="/bento/engine/#Camera2D">Camera2D</a></pre>
 </div>
 <details class="odin-doc-toggle" open>
 <summary class="hideme"><span>&nbsp;</span></summary>
@@ -485,7 +485,7 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="renderer"><span><a class="doc-id-link" href="#renderer">renderer<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L50"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">renderer: ^sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#Renderer">Renderer</a></pre>
+<pre class="doc-code">renderer: ^sdl3.<a class="code-typename" href="/vendor/sdl3/#Renderer">Renderer</a></pre>
 </div>
 <details class="odin-doc-toggle" open>
 <summary class="hideme"><span>&nbsp;</span></summary>
@@ -495,7 +495,7 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="shader_info"><span><a class="doc-id-link" href="#shader_info">shader_info<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L62"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">shader_info: [<span class="number">32</span>]^<a class="code-typename" href="/bento/bento/platform/#ShaderData">ShaderData</a></pre>
+<pre class="doc-code">shader_info: [<span class="number">32</span>]^<a class="code-typename" href="/bento/platform/#ShaderData">ShaderData</a></pre>
 </div>
 </div>
 <div class="pkg-entity">
@@ -517,7 +517,7 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="streams"><span><a class="doc-id-link" href="#streams">streams<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L92"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">streams: [<span class="number">32</span>]^sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#AudioStream">AudioStream</a></pre>
+<pre class="doc-code">streams: [<span class="number">32</span>]^sdl3.<a class="code-typename" href="/vendor/sdl3/#AudioStream">AudioStream</a></pre>
 </div>
 <details class="odin-doc-toggle" open>
 <summary class="hideme"><span>&nbsp;</span></summary>
@@ -547,7 +547,7 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="text_engine"><span><a class="doc-id-link" href="#text_engine">text_engine<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L95"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">text_engine: ^sdl3_ttf.<a class="code-typename" href="/bento/vendor/sdl3/ttf/#TextEngine">TextEngine</a></pre>
+<pre class="doc-code">text_engine: ^sdl3_ttf.<a class="code-typename" href="/vendor/sdl3/ttf/#TextEngine">TextEngine</a></pre>
 </div>
 <details class="odin-doc-toggle" open>
 <summary class="hideme"><span>&nbsp;</span></summary>
@@ -557,7 +557,7 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="textures"><span><a class="doc-id-link" href="#textures">textures<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L91"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">textures: [<span class="keyword">dynamic</span>]^sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#Texture">Texture</a></pre>
+<pre class="doc-code">textures: [<span class="keyword">dynamic</span>]^sdl3.<a class="code-typename" href="/vendor/sdl3/#Texture">Texture</a></pre>
 </div>
 <details class="odin-doc-toggle" open>
 <summary class="hideme"><span>&nbsp;</span></summary>
@@ -567,7 +567,7 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="window"><span><a class="doc-id-link" href="#window">window<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L49"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">window: ^sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#Window">Window</a></pre>
+<pre class="doc-code">window: ^sdl3.<a class="code-typename" href="/vendor/sdl3/#Window">Window</a></pre>
 </div>
 <details class="odin-doc-toggle" open>
 <summary class="hideme"><span>&nbsp;</span></summary>
@@ -588,7 +588,7 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="attach_camera"><span><a class="doc-id-link" href="#attach_camera">attach_camera<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L665"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">attach_camera :: <span class="keyword-type">proc</span>(cam: ^engine.<a class="code-typename" href="/bento/bento/engine/#Camera2D">Camera2D</a>) {…}</pre>
+<pre class="doc-code">attach_camera :: <span class="keyword-type">proc</span>(cam: ^engine.<a class="code-typename" href="/bento/engine/#Camera2D">Camera2D</a>) {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
@@ -600,7 +600,7 @@ For the user platform storage</p>
 <div class="pkg-entity">
 <h3 id="clear_screen"><span><a class="doc-id-link" href="#clear_screen">clear_screen<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L402"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">clear_screen :: <span class="keyword-type">proc</span>(color: engine.<a class="code-typename" href="/bento/bento/engine/#Color">Color</a>) {…}</pre>
+<pre class="doc-code">clear_screen :: <span class="keyword-type">proc</span>(color: engine.<a class="code-typename" href="/bento/engine/#Color">Color</a>) {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
@@ -660,46 +660,46 @@ it will be destoryed at shutdown with destory_all_textures</p>
 <h3 id="draw_arc"><span><a class="doc-id-link" href="#draw_arc">draw_arc<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L501"><em>Source</em></a></div></h3>
 <div>
 <pre class="doc-code">draw_arc :: <span class="keyword-type">proc</span>(
-	center:                                    engine.<a class="code-typename" href="/bento/bento/engine/#Vector2">Vector2</a>, 
+	center:                                    engine.<a class="code-typename" href="/bento/engine/#Vector2">Vector2</a>, 
 	radius, start_angle, end_angle, thickness: <a href="/base/builtin#f32"><span class="doc-builtin">f32</span></a>, 
-	color:                                     engine.<a class="code-typename" href="/bento/bento/engine/#Color">Color</a>, 
+	color:                                     engine.<a class="code-typename" href="/bento/engine/#Color">Color</a>, 
 ) {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
 <h3 id="draw_circle"><span><a class="doc-id-link" href="#draw_circle">draw_circle<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L426"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">draw_circle :: <span class="keyword-type">proc</span>(circle: engine.<a class="code-typename" href="/bento/bento/engine/#Circle">Circle</a>, color: engine.<a class="code-typename" href="/bento/bento/engine/#Color">Color</a>) {…}</pre>
+<pre class="doc-code">draw_circle :: <span class="keyword-type">proc</span>(circle: engine.<a class="code-typename" href="/bento/engine/#Circle">Circle</a>, color: engine.<a class="code-typename" href="/bento/engine/#Color">Color</a>) {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
 <h3 id="draw_debug_text"><span><a class="doc-id-link" href="#draw_debug_text">draw_debug_text<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L654"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">draw_debug_text :: <span class="keyword-type">proc</span>(position: engine.<a class="code-typename" href="/bento/bento/engine/#Vector2">Vector2</a>, text: <a href="/base/builtin#string"><span class="doc-builtin">string</span></a>, scale: <a href="/base/builtin#f32"><span class="doc-builtin">f32</span></a>, color: engine.<a class="code-typename" href="/bento/bento/engine/#Color">Color</a>) {…}</pre>
+<pre class="doc-code">draw_debug_text :: <span class="keyword-type">proc</span>(position: engine.<a class="code-typename" href="/bento/engine/#Vector2">Vector2</a>, text: <a href="/base/builtin#string"><span class="doc-builtin">string</span></a>, scale: <a href="/base/builtin#f32"><span class="doc-builtin">f32</span></a>, color: engine.<a class="code-typename" href="/bento/engine/#Color">Color</a>) {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
 <h3 id="draw_rect"><span><a class="doc-id-link" href="#draw_rect">draw_rect<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L473"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">draw_rect :: <span class="keyword-type">proc</span>(rect: engine.<a class="code-typename" href="/bento/bento/engine/#Rect">Rect</a>, color: engine.<a class="code-typename" href="/bento/bento/engine/#Color">Color</a>) {…}</pre>
+<pre class="doc-code">draw_rect :: <span class="keyword-type">proc</span>(rect: engine.<a class="code-typename" href="/bento/engine/#Rect">Rect</a>, color: engine.<a class="code-typename" href="/bento/engine/#Color">Color</a>) {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
 <h3 id="draw_rect_line"><span><a class="doc-id-link" href="#draw_rect_line">draw_rect_line<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L487"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">draw_rect_line :: <span class="keyword-type">proc</span>(rect: engine.<a class="code-typename" href="/bento/bento/engine/#Rect">Rect</a>, color: engine.<a class="code-typename" href="/bento/bento/engine/#Color">Color</a>) {…}</pre>
+<pre class="doc-code">draw_rect_line :: <span class="keyword-type">proc</span>(rect: engine.<a class="code-typename" href="/bento/engine/#Rect">Rect</a>, color: engine.<a class="code-typename" href="/bento/engine/#Color">Color</a>) {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
 <h3 id="draw_sprite"><span><a class="doc-id-link" href="#draw_sprite">draw_sprite<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L558"><em>Source</em></a></div></h3>
 <div>
 <pre class="doc-code">draw_sprite :: <span class="keyword-type">proc</span>(
-	position:        engine.<a class="code-typename" href="/bento/bento/engine/#Vector2">Vector2</a>, 
+	position:        engine.<a class="code-typename" href="/bento/engine/#Vector2">Vector2</a>, 
 	scale, rotation: <a href="/base/builtin#f64"><span class="doc-builtin">f64</span></a>, 
-	pivot:           engine.<a class="code-typename" href="/bento/bento/engine/#Vector2">Vector2</a>, 
+	pivot:           engine.<a class="code-typename" href="/bento/engine/#Vector2">Vector2</a>, 
 	texture_handle:  <a href="/base/builtin#int"><span class="doc-builtin">int</span></a>, 
-	texture_rect:    engine.<a class="code-typename" href="/bento/bento/engine/#Rect">Rect</a>, 
-	color:           engine.<a class="code-typename" href="/bento/bento/engine/#Color">Color</a>, 
+	texture_rect:    engine.<a class="code-typename" href="/bento/engine/#Rect">Rect</a>, 
+	color:           engine.<a class="code-typename" href="/bento/engine/#Color">Color</a>, 
 	flip_x, flip_y:  <a href="/base/builtin#bool"><span class="doc-builtin">bool</span></a>, 
 	stretch_x, 
 	stretch_y:       <a href="/base/builtin#int"><span class="doc-builtin">int</span></a>, 
@@ -717,7 +717,7 @@ ALSO PRE SCALE STRETCH IN PIXELS.</p>
 <div class="pkg-entity">
 <h3 id="draw_text"><span><a class="doc-id-link" href="#draw_text">draw_text<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L632"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">draw_text :: <span class="keyword-type">proc</span>(position: engine.<a class="code-typename" href="/bento/bento/engine/#Vector2">Vector2</a>, text: <a href="/base/builtin#string"><span class="doc-builtin">string</span></a>, font_handle: <a href="/base/builtin#int"><span class="doc-builtin">int</span></a>, color: engine.<a class="code-typename" href="/bento/bento/engine/#Color">Color</a>) {…}</pre>
+<pre class="doc-code">draw_text :: <span class="keyword-type">proc</span>(position: engine.<a class="code-typename" href="/bento/engine/#Vector2">Vector2</a>, text: <a href="/base/builtin#string"><span class="doc-builtin">string</span></a>, font_handle: <a href="/base/builtin#int"><span class="doc-builtin">int</span></a>, color: engine.<a class="code-typename" href="/bento/engine/#Color">Color</a>) {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
@@ -815,7 +815,7 @@ note: should be the same as sdl.GetWindowSizeInPixels</p>
 <div class="pkg-entity">
 <h3 id="init"><span><a class="doc-id-link" href="#init">init<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L136"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">init :: <span class="keyword-type">proc</span>(config: engine.<a class="code-typename" href="/bento/bento/engine/#PlatformConfig">PlatformConfig</a>) {…}</pre>
+<pre class="doc-code">init :: <span class="keyword-type">proc</span>(config: engine.<a class="code-typename" href="/bento/engine/#PlatformConfig">PlatformConfig</a>) {…}</pre>
 </div>
 <details class="odin-doc-toggle" open>
 <summary class="hideme"><span>&nbsp;</span></summary>
@@ -826,13 +826,13 @@ note: should be the same as sdl.GetWindowSizeInPixels</p>
 <div class="pkg-entity">
 <h3 id="input_reset"><span><a class="doc-id-link" href="#input_reset">input_reset<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L1143"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">input_reset :: <span class="keyword-type">proc</span>(input: ^engine.<a class="code-typename" href="/bento/bento/engine/#GameInput">GameInput</a>) {…}</pre>
+<pre class="doc-code">input_reset :: <span class="keyword-type">proc</span>(input: ^engine.<a class="code-typename" href="/bento/engine/#GameInput">GameInput</a>) {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
 <h3 id="input_set_state"><span><a class="doc-id-link" href="#input_set_state">input_set_state<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L1121"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">input_set_state :: <span class="keyword-type">proc</span>(input: ^engine.<a class="code-typename" href="/bento/bento/engine/#GameInput">GameInput</a>, type: engine.<a class="code-typename" href="/bento/bento/engine/#InputType">InputType</a>, state: <a href="/base/builtin#f64"><span class="doc-builtin">f64</span></a>) {…}</pre>
+<pre class="doc-code">input_set_state :: <span class="keyword-type">proc</span>(input: ^engine.<a class="code-typename" href="/bento/engine/#GameInput">GameInput</a>, type: engine.<a class="code-typename" href="/bento/engine/#InputType">InputType</a>, state: <a href="/base/builtin#f64"><span class="doc-builtin">f64</span></a>) {…}</pre>
 </div>
 <details class="odin-doc-toggle" open>
 <summary class="hideme"><span>&nbsp;</span></summary>
@@ -922,7 +922,7 @@ note: should be the same as sdl.GetWindowSizeInPixels</p>
 <div class="pkg-entity">
 <h3 id="platform_storage_init_writer"><span><a class="doc-id-link" href="#platform_storage_init_writer">platform_storage_init_writer<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L1482"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">platform_storage_init_writer :: <span class="keyword-type">proc</span>(storage: engine.<a class="code-typename" href="/bento/bento/engine/#Storage">Storage</a>) -> <a href="/base/builtin#bool"><span class="doc-builtin">bool</span></a> {…}</pre>
+<pre class="doc-code">platform_storage_init_writer :: <span class="keyword-type">proc</span>(storage: engine.<a class="code-typename" href="/bento/engine/#Storage">Storage</a>) -> <a href="/base/builtin#bool"><span class="doc-builtin">bool</span></a> {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
@@ -971,7 +971,7 @@ middle it will wipe shader state going ahead.</p>
 <div class="pkg-entity">
 <h3 id="set_clip_rect"><span><a class="doc-id-link" href="#set_clip_rect">set_clip_rect<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L538"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">set_clip_rect :: <span class="keyword-type">proc</span>(rect: engine.<a class="code-typename" href="/bento/bento/engine/#Rect">Rect</a>) {…}</pre>
+<pre class="doc-code">set_clip_rect :: <span class="keyword-type">proc</span>(rect: engine.<a class="code-typename" href="/bento/engine/#Rect">Rect</a>) {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
@@ -983,7 +983,7 @@ middle it will wipe shader state going ahead.</p>
 <div class="pkg-entity">
 <h3 id="set_gamepad_axis_half"><span><a class="doc-id-link" href="#set_gamepad_axis_half">set_gamepad_axis_half<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L1216"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">set_gamepad_axis_half :: <span class="keyword-type">proc</span>(input: ^engine.<a class="code-typename" href="/bento/bento/engine/#GameInput">GameInput</a>, type: engine.<a class="code-typename" href="/bento/bento/engine/#InputType">InputType</a>, state: <a href="/base/builtin#f64"><span class="doc-builtin">f64</span></a>) {…}</pre>
+<pre class="doc-code">set_gamepad_axis_half :: <span class="keyword-type">proc</span>(input: ^engine.<a class="code-typename" href="/bento/engine/#GameInput">GameInput</a>, type: engine.<a class="code-typename" href="/bento/engine/#InputType">InputType</a>, state: <a href="/base/builtin#f64"><span class="doc-builtin">f64</span></a>) {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
@@ -995,19 +995,19 @@ middle it will wipe shader state going ahead.</p>
 <div class="pkg-entity">
 <h3 id="set_half_axis_state"><span><a class="doc-id-link" href="#set_half_axis_state">set_half_axis_state<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L1250"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">set_half_axis_state :: <span class="keyword-type">proc</span>(input: ^engine.<a class="code-typename" href="/bento/bento/engine/#GameInput">GameInput</a>, state: <a href="/base/builtin#f64"><span class="doc-builtin">f64</span></a>, type_pos: engine.<a class="code-typename" href="/bento/bento/engine/#InputType">InputType</a>, type_neg: engine.<a class="code-typename" href="/bento/bento/engine/#InputType">InputType</a>) {…}</pre>
+<pre class="doc-code">set_half_axis_state :: <span class="keyword-type">proc</span>(input: ^engine.<a class="code-typename" href="/bento/engine/#GameInput">GameInput</a>, state: <a href="/base/builtin#f64"><span class="doc-builtin">f64</span></a>, type_pos: engine.<a class="code-typename" href="/bento/engine/#InputType">InputType</a>, type_neg: engine.<a class="code-typename" href="/bento/engine/#InputType">InputType</a>) {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
 <h3 id="set_renderer_draw_color"><span><a class="doc-id-link" href="#set_renderer_draw_color">set_renderer_draw_color<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L697"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">set_renderer_draw_color :: <span class="keyword-type">proc</span>(renderer: ^sdl3.<a class="code-typename" href="/bento/vendor/sdl3/#Renderer">Renderer</a>, r, g, b, a: <a href="/base/builtin#u8"><span class="doc-builtin">u8</span></a>) -> <a href="/base/builtin#bool"><span class="doc-builtin">bool</span></a> {…}</pre>
+<pre class="doc-code">set_renderer_draw_color :: <span class="keyword-type">proc</span>(renderer: ^sdl3.<a class="code-typename" href="/vendor/sdl3/#Renderer">Renderer</a>, r, g, b, a: <a href="/base/builtin#u8"><span class="doc-builtin">u8</span></a>) -> <a href="/base/builtin#bool"><span class="doc-builtin">bool</span></a> {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
 <h3 id="shader_create_info"><span><a class="doc-id-link" href="#shader_create_info">shader_create_info<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L280"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">shader_create_info :: <span class="keyword-type">proc</span>(shader_create_info: engine.<a class="code-typename" href="/bento/bento/engine/#ShaderCreateInfo">ShaderCreateInfo</a>) -> <a href="/base/builtin#int"><span class="doc-builtin">int</span></a> {…}</pre>
+<pre class="doc-code">shader_create_info :: <span class="keyword-type">proc</span>(shader_create_info: engine.<a class="code-typename" href="/bento/engine/#ShaderCreateInfo">ShaderCreateInfo</a>) -> <a href="/base/builtin#int"><span class="doc-builtin">int</span></a> {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
@@ -1035,13 +1035,13 @@ middle it will wipe shader state going ahead.</p>
 <div class="pkg-entity">
 <h3 id="update_input"><span><a class="doc-id-link" href="#update_input">update_input<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L1149"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">update_input :: <span class="keyword-type">proc</span>(input: ^engine.<a class="code-typename" href="/bento/bento/engine/#GameInput">GameInput</a>) {…}</pre>
+<pre class="doc-code">update_input :: <span class="keyword-type">proc</span>(input: ^engine.<a class="code-typename" href="/bento/engine/#GameInput">GameInput</a>) {…}</pre>
 </div>
 </div>
 <div class="pkg-entity">
 <h3 id="write_file"><span><a class="doc-id-link" href="#write_file">write_file<span class="a-hidden">&nbsp;¶</span></a></span><div class="doc-source"><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin#L747"><em>Source</em></a></div></h3>
 <div>
-<pre class="doc-code">write_file :: <span class="keyword-type">proc</span>(path: <a href="/base/builtin#string"><span class="doc-builtin">string</span></a>, buffer: <a href="/base/builtin#rawptr"><span class="doc-builtin">rawptr</span></a>, size: <a href="/base/builtin#int"><span class="doc-builtin">int</span></a>, storage: engine.<a class="code-typename" href="/bento/bento/engine/#Storage">Storage</a>) -> <a href="/base/builtin#bool"><span class="doc-builtin">bool</span></a> {…}</pre>
+<pre class="doc-code">write_file :: <span class="keyword-type">proc</span>(path: <a href="/base/builtin#string"><span class="doc-builtin">string</span></a>, buffer: <a href="/base/builtin#rawptr"><span class="doc-builtin">rawptr</span></a>, size: <a href="/base/builtin#int"><span class="doc-builtin">int</span></a>, storage: engine.<a class="code-typename" href="/bento/engine/#Storage">Storage</a>) -> <a href="/base/builtin#bool"><span class="doc-builtin">bool</span></a> {…}</pre>
 </div>
 </div>
 <h2 id="pkg-procedure-groups" class="pkg-header">Procedure Groups</h2>
@@ -1052,7 +1052,7 @@ middle it will wipe shader state going ahead.</p>
 <li><a href="https://github.com/burntbento/bento/blob/main/platform/platform.odin">platform.odin</a></li>
 </ul>
 <h2 id="pkg-generation-information">Generation Information</h2>
-<p>Generated with <code>odin version dev-2026-09 (vendor "odin") Linux_amd64 @ 2026-09-26 05:44:46.090433460 +0000 UTC</code></p>
+<p>Generated with <code>odin version dev-2026-09 (vendor "odin") Linux_amd64 @ 2026-09-26 05:53:09.448978451 +0000 UTC</code></p>
 </article>
 <div class="col-lg-2 odin-toc-border navbar-light"><div class="sticky-top odin-below-navbar py-3">
 <nav id="TableOfContents">
