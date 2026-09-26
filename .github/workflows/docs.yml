@@ -1,4 +1,4 @@
-name: Deploy docs to Cloudflare Pages
+name: Deploy docs to Cloudflare Workers
 
 # Sets up to deploy when a new commit is pushed to the main branch, or when you click
 # run in the GitHub UI.
@@ -19,7 +19,7 @@ jobs:
   docs:
     # Environment that the action deploys to.
     environment:
-      name: cloudflare-pages
+      name: cloudflare-workers
       url: ${{ steps.deployment.outputs.deployment-url }}
 
     runs-on: ubuntu-latest
@@ -48,10 +48,10 @@ jobs:
       - name: Generate documentation
         run: make docs-build
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Workers
         id: deployment
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy ./website/static --project-name=bento
+          command: deploy
