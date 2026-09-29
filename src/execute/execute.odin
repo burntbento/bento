@@ -114,7 +114,8 @@ engine_run :: proc(game_data: ^Game) {
 
 		platform.begin_frame()
 		{
-			for cmd in cmdbuf.commands {
+			for i in 0 ..< cmdbuf.count {
+				cmd := cmdbuf.commands[i]
 				switch v in cmd {
 				case engine.RenderCommandClearScreen:
 					platform.clear_screen(v.color)

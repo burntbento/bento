@@ -1,8 +1,7 @@
 package engine
 
-
 // render comand buffer structure
-
+MAXCOMMANDS :: 1024
 
 // render command types
 RenderCommandPushCanvas :: struct {
@@ -102,31 +101,34 @@ RenderCommand :: union {
 
 // buffer to be read and written to
 RenderCommandBuffer :: struct {
-	commands: [dynamic]RenderCommand,
+	commands: [MAXCOMMANDS]RenderCommand,
+	count:    int,
 }
 
 
 // pushes commands to the cmd buffer
 @(private)
 cmd_push :: proc(cmdbuf: ^RenderCommandBuffer, cmd: RenderCommand) {
-	append(&cmdbuf.commands, cmd)
+	if cmdbuf.count >= MAXCOMMANDS do return
+	cmdbuf.commands[cmdbuf.count] = cmd
+	cmdbuf.count += 1
 }
 
-// deletes dynamic array from command buffer
-cmd_destroy :: proc(cmdbuf: ^RenderCommandBuffer) {
-	delete(cmdbuf.commands)
+cmd_reset :: proc(cmdbuf: ^RenderCommandBuffer) {
+	cmdbuf.count = 0
 }
 
+
+// Must be destroyed with rendercommand_destroy
 rendercommandbuffer_new :: proc() -> ^RenderCommandBuffer {
 	cmdbuf := new(RenderCommandBuffer)
-	cmdbuf.commands = make([dynamic]RenderCommand)
 	return cmdbuf
 }
 
 rendercommandbuffer_destroy :: proc(cmdbuf: ^RenderCommandBuffer) {
-	cmd_destroy(cmdbuf)
 	free(cmdbuf)
 }
+
 
 // command interfaces
 
