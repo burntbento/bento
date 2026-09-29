@@ -19,7 +19,7 @@ For convinience, there is a examples folder that holds some simple examples to g
 Run examples from the root of the directory with,
 
 ```odin
-odin run ./examples/{example_name}/{example_name}.odin -file -collection:bento:src
+odin run ./examples/{example_name}/{example_name}.odin -file -collection:bento=src
 ```
 or if using the Makefile,
 
