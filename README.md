@@ -2,25 +2,134 @@
 
 2D Game Engine written in Odin with SDL3.
 
-# Architecture
+# Examples
 
-The engine is split into 3 layers, engine, platform and execute.
+For convinience, there is a examples folder that holds some simple examples to get started with. It also shows how to idiomatically use this library.
 
-The engine layer is responsible for general data structures and logic that will be general across most games e.g. camera struct and transitions. It also provides a the api interface for the platform layer.
+Run examples from the root of the directory with,
 
-The platform layer is what interacts with the operating system and provides platform specific code to, for example, draw a rectangle or play some audio. Currently the only platform layer is a sdl3 implementation. It would be good at somepoint to extend this to OpenGL, Vulkan, raylib etc.
-
-The execute layer is a small layer that takes in a game vtable and runs the main game loop. If this layer was not here, every game would have to implement its own main loop which can be a bit tedious. However, they still can if they want.
-
+```odin
+odin run ./examples/{example_name}/{example_name}.odin -file -collection:bento=src
 ```
-// Implement this and run
-Game :: struct {
-	game_init:     proc(platform_data: ^engine.Platform),
-	game_update:   proc(input: ^engine.GameInput, dt: f64) -> bool,
-	game_render:   proc() -> ^engine.RenderCommandBuffer,
-	game_shutdown: proc(),
+or if using the Makefile,
+
+```odin
+make run-example example={example_name} # make run-example example=rectangle
+```
+A full example of rectangle.odin,
+
+```odin
+// examples/rectangle/rectangle.odin
+
+package rectangle
+
+import "bento:engine"
+import "bento:execute"
+
+// -- Globals -- //
+
+
+// Game state that will hold relevant global data
+// for the life of the game
+state: ^engine.GameState
+
+screen_width: int // width of the screen in pixels
+screen_height: int // height of the screen in pixels
+
+// -- Main Loop -- //
+
+main :: proc() {
+	// main proc, set game function pointers
+	platform_config := engine.PlatformConfig {
+		title         = "rectangle",
+		window_width  = 800,
+		window_height = 600,
+		fullscreen    = false,
+	}
+
+	// fill vtable
+	game_data := execute.Game {
+		platform_config = platform_config,
+		game_init       = init,
+		game_update     = update,
+		game_render     = render,
+		game_shutdown   = shutdown,
+	}
+
+	// start main loop
+	execute.engine_run(&game_data)
 }
+
+
+// -- Game Functions -- //
+
+init :: proc(platform: ^engine.Platform) {
+
+	// create new instance of gamestate
+	err: engine.Error
+	state, err = engine.game_state_new()
+	if err != nil {
+		panic(engine.fmt_error(err, context.temp_allocator))
+	}
+
+	// create new command buffer
+	state.cmdbuf = engine.rendercommandbuffer_new()
+
+	// point state to platform
+	state.platform = platform
+
+	// fill in screen_width and height
+	screen_width, screen_height = state.platform.get_window_size()
+}
+
+update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
+	return true
+}
+
+render :: proc() -> ^engine.RenderCommandBuffer {
+	// reset command buffer, it is being allocated in the hot loop
+	// resetting here makes sure that memory doesnt build up
+	engine.cmd_reset(state.cmdbuf)
+
+
+	// set rect width
+	rect_width := f64(screen_width) * 0.25
+
+	// flush screen with a blank color
+	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
+
+	// draw red rectangle in the center of the screen
+	engine.cmd_draw_rect(
+		state.cmdbuf,
+		engine.rect(
+			f64(screen_width) / 2 - 0.5 * rect_width,
+			f64(screen_height) / 2 - 0.5 * rect_width,
+			rect_width,
+			rect_width,
+		),
+		engine.RED,
+	)
+	return state.cmdbuf
+}
+
+shutdown :: proc() {
+
+	// free cmd_buffer
+	engine.rendercommandbuffer_destroy(state.cmdbuf)
+
+	// free state
+	engine.game_state_destroy(state)
+}
+
 ```
+
+# License
+
+[license](LICENSE.txt)
+
+
+
+
 
 
 
