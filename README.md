@@ -123,6 +123,11 @@ shutdown :: proc() {
 
 ```
 
+# License
+
+[license](LICENSE.txt)
+
+
 
 
 
