@@ -2,7 +2,7 @@
 example ?= rectangle
 
 run-example:
-	odin run ./examples/$(example)/$(example).odin -file -collection:bento=src --debug
+	odin run ./examples/$(example)/$(example).odin -file -collection:bento=src
 
 docs-build:
 	mkdir -p ./website/static
