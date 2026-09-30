@@ -14,7 +14,7 @@ odin run ./examples/{example_name}/{example_name}.odin -file -collection:bento=s
 or if using the Makefile,
 
 ```odin
-make run-example example={example_name} # make run-example example=rectangle
+make run-example example={example_name} // e.g. make run-example example=rectangle
 ```
 A full example of rectangle.odin,
 
