@@ -2,16 +2,6 @@
 
 2D Game Engine written in Odin with SDL3.
 
-# Architecture
-
-The engine is split into 3 layers, engine, platform and execute.
-
-The engine layer is responsible for general data structures and logic that will be general across most games e.g. camera struct and transitions. It also provides a the api interface for the platform layer.
-
-The platform layer is what interacts with the operating system and provides platform specific code to, for example, draw a rectangle or play some audio. Currently the only platform layer is a sdl3 implementation. This layer provides common apis that can be hooked up to other graphics backends including OpenGL, Raylib, Vulkan and DX12.
-
-The execute layer is a small layer that takes in a game vtable and runs the main game loop. You can also implement your own main loop which can be a bit tedious.
-
 # Examples
 
 For convinience, there is a examples folder that holds some simple examples to get started with. It also shows how to idiomatically use this library.
@@ -24,7 +14,7 @@ odin run ./examples/{example_name}/{example_name}.odin -file -collection:bento=s
 or if using the Makefile,
 
 ```odin
-make run-example example={examplename} // make run-example example=rectangle
+make run-example example={example_name} # make run-example example=rectangle
 ```
 A full example of rectangle.odin,
 
@@ -130,6 +120,7 @@ shutdown :: proc() {
 	// free state
 	engine.game_state_destroy(state)
 }
+
 ```
 
 
