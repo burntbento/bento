@@ -1,9 +1,12 @@
-package move
+package animation
+
+// retro_cat.png https://toffeecraft.itch.io/cat-retro
 
 import "bento:engine"
 import "bento:execute"
 
 // -- Globals -- //
+
 
 // Game state that will hold relevant global data
 // for the life of the game
@@ -12,15 +15,15 @@ state: ^engine.GameState
 screen_width: int // width of the screen in pixels
 screen_height: int // height of the screen in pixels
 
-rect: engine.Rect // rectangle i.e. player
-speed :: 300 // movement speed
+texture_handle: int // handle to the retro_cat.png texture
+animation: ^engine.Animation // holds animation state
 
 // -- Main Loop -- //
 
 main :: proc() {
 	// main proc, set game function pointers
 	platform_config := engine.PlatformConfig {
-		title         = "move rectangle",
+		title         = "retro cat",
 		window_width  = 800,
 		window_height = 600,
 		fullscreen    = false,
@@ -59,36 +62,23 @@ init :: proc(platform: ^engine.Platform) {
 	// fill in screen_width and height
 	screen_width, screen_height = state.platform.get_window_size()
 
-	// set rect width
-	rect_width := f64(screen_width) * 0.25
+	// init asset cache for texture handle
+	state.asset_cache = engine.asset_cache_new()
 
-	// initialise rectangle
-	rect = engine.rect(
-		f64(screen_width) / 2 - 0.5 * rect_width,
-		f64(screen_height) / 2 - 0.5 * rect_width,
-		rect_width,
-		rect_width,
-	)
+	// get texture handle
+	texture_handle, err = engine.texture_load("examples/animation/retro_cats.png", state)
+	if err != nil {
+		panic("failed to load retro_cats")
+	}
+
+	// init animation state
+	animation = engine.animation_new(64, 64)
+	engine.animation_add(animation, "idle", 0, 0, 4, 0.1, true)
+	engine.animation_switch(animation, "idle")
 }
 
 update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
-
-	if engine.input_state(input, engine.InputType.INPUT_KEY_RIGHT) > 0 {
-		rect.x += speed * dt
-	}
-
-	if engine.input_state(input, engine.InputType.INPUT_KEY_LEFT) > 0 {
-		rect.x -= speed * dt
-	}
-
-	if engine.input_state(input, engine.InputType.INPUT_KEY_DOWN) > 0 {
-		rect.y += speed * dt
-	}
-
-	if engine.input_state(input, engine.InputType.INPUT_KEY_UP) > 0 {
-		rect.y -= speed * dt
-	}
-
+	engine.animation_update(animation, dt)
 	return true
 }
 
@@ -97,11 +87,33 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	// resetting here makes sure that memory doesnt build up
 	engine.cmd_reset(state.cmdbuf)
 
+
+	// set rect width
+	rect_width := f64(screen_width) * 0.25
+
 	// flush screen with a blank color
 	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
 
-	// draw red rectangle
-	engine.cmd_draw_rect(state.cmdbuf, rect, engine.RED)
+	// postion centering the sprite based on scale
+	scale: f64 = 4
+	pos := engine.vector2(
+		f64(screen_width) / 2 - 0.5 * 64 * scale,
+		f64(screen_height) / 2 - 0.5 * 64 * scale,
+	)
+
+	// draw red rectangle in the center of the screen
+	engine.cmd_draw_sprite(
+		state.cmdbuf,
+		pos,
+		scale,
+		0,
+		engine.vector2(0, 0),
+		texture_handle,
+		engine.rect(f64(animation.animations[animation.current].current_frame * 64), 0, 64, 64),
+		engine.WHITE,
+		false,
+		false,
+	)
 	return state.cmdbuf
 }
 
@@ -109,6 +121,12 @@ shutdown :: proc() {
 
 	// free cmd_buffer
 	engine.rendercommandbuffer_destroy(state.cmdbuf)
+
+	// free animation
+	engine.animation_destroy(animation)
+
+	// destroy asset cache
+	engine.asset_cache_destroy(state.asset_cache)
 
 	// free state
 	engine.game_state_destroy(state)
