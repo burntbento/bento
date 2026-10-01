@@ -2,6 +2,22 @@
 
 2D Game Engine written in Odin with SDL3.
 
+# Installation
+
+## Dependencies
+
+- Odin
+- SDL3
+- SDL_ttf
+
+To use the library either use git submodules or just copy the `src` folder into your project.
+
+Use collections to compile, e.g.
+
+```odin
+odin run . -collection:bento=src
+```
+
 # Examples
 
 For convinience, there is a examples folder that holds some simple examples to get started with. It also shows how to idiomatically use this library.
