@@ -45,16 +45,10 @@ init :: proc(platform: ^engine.Platform) {
 
 	// create new instance of gamestate
 	err: engine.Error
-	state, err = engine.game_state_new()
+	state, err = engine.game_state_new(platform)
 	if err != nil {
 		panic(engine.fmt_error(err, context.temp_allocator))
 	}
-
-	// create new command buffer
-	state.cmdbuf = engine.rendercommandbuffer_new()
-
-	// point state to platform
-	state.platform = platform
 
 	// fill in screen_width and height
 	screen_width, screen_height = state.platform.get_window_size()
@@ -106,9 +100,6 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 }
 
 shutdown :: proc() {
-
-	// free cmd_buffer
-	engine.rendercommandbuffer_destroy(state.cmdbuf)
 
 	// free state
 	engine.game_state_destroy(state)

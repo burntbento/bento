@@ -1,5 +1,7 @@
 package engine
 
+import "core:mem"
+
 TextureAsset :: struct {
 	handle: int,
 	width:  int,
@@ -11,6 +13,7 @@ AssetCache :: struct {
 	audio_cache:   map[string]AudioClip,
 	font_cache:    map[string]int,
 	shader_cache:  map[string]int,
+	_allocator:    mem.Allocator,
 }
 
 asset_cache_new :: proc(allocator := context.allocator) -> ^AssetCache {
@@ -19,10 +22,13 @@ asset_cache_new :: proc(allocator := context.allocator) -> ^AssetCache {
 	cache.font_cache = make(map[string]int, allocator)
 	cache.audio_cache = make(map[string]AudioClip, allocator)
 	cache.shader_cache = make(map[string]int, allocator)
+	cache._allocator = allocator
 	return cache
 }
 
 asset_cache_destroy :: proc(cache: ^AssetCache) {
+	allocator := cache._allocator
+
 	// destroy texture keys
 	for key in cache.texture_cache {
 		delete(key)
@@ -48,5 +54,5 @@ asset_cache_destroy :: proc(cache: ^AssetCache) {
 	delete(cache.audio_cache)
 
 	// finally
-	free(cache)
+	free(cache, allocator)
 }
