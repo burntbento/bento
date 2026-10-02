@@ -25,8 +25,8 @@ Storage :: enum {
 
 
 // game_state creates a new pointer to GameState using the
-// given allocator. It also creates the render command buffer
-// and asset cache.
+// given allocator. It also creates the render command buffer and asset cache.
+//
 // Must be freed with game_state_destroy, this also destroys the
 // memory of render command buffer and asset cache.
 game_state_new :: proc(
