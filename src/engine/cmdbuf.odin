@@ -120,13 +120,13 @@ cmd_reset :: proc(cmdbuf: ^RenderCommandBuffer) {
 
 
 // Must be destroyed with rendercommand_destroy
-rendercommandbuffer_new :: proc() -> ^RenderCommandBuffer {
-	cmdbuf := new(RenderCommandBuffer)
+rendercommandbuffer_new :: proc(allocator := context.allocator) -> ^RenderCommandBuffer {
+	cmdbuf := new(RenderCommandBuffer, allocator)
 	return cmdbuf
 }
 
-rendercommandbuffer_destroy :: proc(cmdbuf: ^RenderCommandBuffer) {
-	free(cmdbuf)
+rendercommandbuffer_destroy :: proc(cmdbuf: ^RenderCommandBuffer, allocator := context.allocator) {
+	free(cmdbuf, allocator)
 }
 
 
