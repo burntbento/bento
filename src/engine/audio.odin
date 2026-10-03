@@ -47,6 +47,7 @@ audio_init :: proc(allocator := context.allocator) {
 	reserve(&audio_system.assets, AUDIO_MAX_SOUNDS)
 }
 
+@(private)
 audio_play_internal :: proc(state: ^GameState, clip: AudioClip, settings: ^AudioSettings) -> int {
 	if (!clip.ok) {
 		return -1
@@ -170,6 +171,10 @@ audio_pause :: proc(state: ^GameState, handle: int) -> bool {
 
 audio_resume :: proc(state: ^GameState, handle: int) -> bool {
 	return state.platform.resume_sound(handle)
+}
+
+audio_set_volume :: proc(state: ^GameState, handle: int, volume: f64) -> bool {
+	return state.platform.set_sound_volume(handle, volume)
 }
 
 audio_play :: proc(state: ^GameState, clip: AudioClip, settings: ^AudioSettings) -> int {

@@ -98,6 +98,16 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 		music_state = !music_state
 	}
 
+	if engine.input_pressed(input, engine.InputType.INPUT_KEY_UP) {
+		music_settings.volume += 0.1
+		engine.audio_set_volume(state, music_handle, music_settings.volume)
+	}
+
+	if engine.input_pressed(input, engine.InputType.INPUT_KEY_DOWN) {
+		music_settings.volume -= 0.1
+		engine.audio_set_volume(state, music_handle, music_settings.volume)
+	}
+
 	return true
 }
 

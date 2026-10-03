@@ -1365,15 +1365,34 @@ destroy_all_sounds :: proc() {
 	stream_count = 0
 }
 
-// TODO: make safe
+@(private)
+get_stream_handle :: proc(handle: int) -> ^sdl.AudioStream {
+	if handle < 0 || handle > MAX_CONCURRENT_AUDIO_STREAMS - 1 do return nil
+	return streams[handle]
+}
+
 pause_sound :: proc(handle: int) -> bool {
-	stream := streams[handle]
+	stream := get_stream_handle(handle)
+	if stream == nil {
+		return false
+	}
 	return sdl.PauseAudioStreamDevice(stream)
 }
 
 resume_sound :: proc(handle: int) -> bool {
-	stream := streams[handle]
+	stream := get_stream_handle(handle)
+	if stream == nil {
+		return false
+	}
 	return sdl.ResumeAudioStreamDevice(stream)
+}
+
+set_sound_volume :: proc(handle: int, volume: f64) -> bool {
+	stream := get_stream_handle(handle)
+	if stream == nil {
+		return false
+	}
+	return sdl.SetAudioStreamGain(stream, f32(volume))
 }
 
 play_sound :: proc(format, channels, freq: int, data: ^u8, length: int, volume: f64) -> int {
