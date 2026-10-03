@@ -1,5 +1,5 @@
 <p align="center">
-<img width="450" src="logo/bento.png" alt="Bento logo">
+<img width="450" src="media/bento.png" alt="Bento logo">
 </p>
 
 # bento
