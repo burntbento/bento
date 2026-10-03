@@ -65,6 +65,7 @@ main :: proc() {
 		window_width  = 800,
 		window_height = 600,
 		fullscreen    = false,
+		scale_mode    = .LINEAR,
 	}
 
 	game_data := execute.Game {
