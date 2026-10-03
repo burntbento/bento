@@ -22,6 +22,7 @@ main :: proc() {
 		window_width  = 800,
 		window_height = 600,
 		fullscreen    = false,
+		scale_mode    = .NEAREST,
 	}
 
 	game_data := execute.Game {
