@@ -1,3 +1,7 @@
+<p align="center">
+<img width="450" src="media/bento.png" alt="Bento logo">
+</p>
+
 # bento
 
 2D Game Engine written in Odin with SDL3.
