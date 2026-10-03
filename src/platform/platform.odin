@@ -1,8 +1,6 @@
 package platform
 
-import "base:runtime"
 import "bento:engine"
-import "bento:platform"
 import "core:c"
 import "core:fmt"
 import "core:math"
@@ -112,7 +110,7 @@ platform_config_new :: proc(
 	allocator := context.allocator,
 ) -> ^PlatformConfig {
 
-	platform_config := new(PlatformConfig, allocator)
+	p_config := new(PlatformConfig, allocator)
 
 	title, err := strings.clone_to_cstring(config.title, allocator)
 	if err != nil {
@@ -134,36 +132,36 @@ platform_config_new :: proc(
 		flags += {.FULLSCREEN}
 	}
 
-	platform_config.title = title
+	p_config.title = title
 
 	// window
-	platform_config.window_width = c.int(config.window_width)
-	platform_config.window_height = c.int(config.window_height)
+	p_config.window_width = c.int(config.window_width)
+	p_config.window_height = c.int(config.window_height)
 
 	// storage
-	platform_config.org = org
-	platform_config.app = app
+	p_config.org = org
+	p_config.app = app
 
 	// sdl flags
-	platform_config.flags = flags
+	p_config.flags = flags
 
 	// set scale mode
 	switch config.scale_mode {
 	case .LINEAR:
-		platform_config.scale_mode = .LINEAR
+		p_config.scale_mode = .LINEAR
 	case .NEAREST:
-		platform_config.scale_mode = .NEAREST
+		p_config.scale_mode = .NEAREST
 	case .PIXELART:
-		platform_config.scale_mode = .PIXELART
+		p_config.scale_mode = .PIXELART
 	case:
-		platform_config.scale_mode = .LINEAR
+		p_config.scale_mode = .LINEAR
 
 	}
 
 	// set allocator
-	platform_config._allocator = allocator
+	p_config._allocator = allocator
 
-	return platform_config
+	return p_config
 }
 
 platform_config_destroy :: proc(platform_config: ^PlatformConfig) {
