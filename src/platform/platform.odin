@@ -1,6 +1,8 @@
 package platform
 
+import "base:runtime"
 import "bento:engine"
+import "bento:platform"
 import "core:c"
 import "core:fmt"
 import "core:math"
@@ -49,6 +51,8 @@ PlatformStorage :: struct {
 window: ^sdl.Window // sdl window
 renderer: ^sdl.Renderer // sdl renderer
 
+platform_config: ^PlatformConfig // config
+
 // gpu
 device: ^sdl.GPUDevice
 formats: sdl.GPUShaderFormat
@@ -74,16 +78,6 @@ current_canvas: ^sdl.Texture
 text_buffer: [64]u8 // text buffer for text input not key input
 text_buffer_len: int // text buffer length
 
-
-// **ORG**
-// TODO: move to config
-// For the user platform storage
-ORG :: "RATLUDU"
-
-// **APP**
-// For the user platform storage
-APP :: "CROMBUCKLE"
-
 MAX_CONCURRENT_AUDIO_STREAMS :: 32
 PLACEHOLDER_TEXTURE_HANDLE :: -1
 
@@ -100,19 +94,39 @@ NUM_CIRCLE_SEGMENTS :: 48
 
 
 @(private)
-ParsedPlatformConfig :: struct {
+PlatformConfig :: struct {
 	title:         cstring,
 	window_width:  c.int,
 	window_height: c.int,
 	flags:         sdl.WindowFlags,
+	org:           cstring, // for storage api
+	app:           cstring, // for storage api
+	scale_mode:    sdl.ScaleMode,
+	// allocator
+	_allocator:    mem.Allocator,
 }
 
 @(private)
-parse_platform_config :: proc(config: engine.PlatformConfig) -> ParsedPlatformConfig {
+platform_config_new :: proc(
+	config: engine.PlatformConfig,
+	allocator := context.allocator,
+) -> ^PlatformConfig {
 
-	title, err := strings.clone_to_cstring(config.title)
+	platform_config := new(PlatformConfig, allocator)
+
+	title, err := strings.clone_to_cstring(config.title, allocator)
 	if err != nil {
-		panic("Failed to load config")
+		panic("Failed to load config, cstring clone allocation failed")
+	}
+
+	org, org_err := strings.clone_to_cstring(config.org, allocator)
+	if org_err != nil {
+		panic("Failed to load config, cstring clone allocation failed")
+	}
+
+	app, app_err := strings.clone_to_cstring(config.app, allocator)
+	if app_err != nil {
+		panic("Failed to load config, cstring clone allocation failed")
 	}
 
 	flags: sdl.WindowFlags = {.HIGH_PIXEL_DENSITY}
@@ -120,21 +134,53 @@ parse_platform_config :: proc(config: engine.PlatformConfig) -> ParsedPlatformCo
 		flags += {.FULLSCREEN}
 	}
 
-	return ParsedPlatformConfig {
-		title = title,
-		window_height = c.int(config.window_height),
-		window_width = c.int(config.window_width),
-		flags = flags,
+	platform_config.title = title
+
+	// window
+	platform_config.window_width = c.int(config.window_width)
+	platform_config.window_height = c.int(config.window_height)
+
+	// storage
+	platform_config.org = org
+	platform_config.app = app
+
+	// sdl flags
+	platform_config.flags = flags
+
+	// set scale mode
+	switch config.scale_mode {
+	case .LINEAR:
+		platform_config.scale_mode = .LINEAR
+	case .NEAREST:
+		platform_config.scale_mode = .NEAREST
+	case .PIXELART:
+		platform_config.scale_mode = .PIXELART
+	case:
+		platform_config.scale_mode = .LINEAR
+
 	}
+
+	// set allocator
+	platform_config._allocator = allocator
+
+	return platform_config
 }
+
+platform_config_destroy :: proc(platform_config: ^PlatformConfig) {
+	allocator := platform_config._allocator
+	delete(platform_config.title)
+	delete(platform_config.org)
+	delete(platform_config.app)
+	free(platform_config, allocator)
+}
+
 
 /*
    Platform initialisation procedure. It should initialise anything platorm related at startup. This includes window, renderer, audio and input etc. Anything initialised here should be paired with a equivalent destroy proc in `destory`.
 */
 init :: proc(config: engine.PlatformConfig) {
 	// parse config
-	parsed_config := parse_platform_config(config)
-	defer delete(parsed_config.title)
+	platform_config = platform_config_new(config)
 
 	// INFO: set log verbosiity, turn off in production, should we write somewhere?
 	sdl.SetLogPriorities(.VERBOSE)
@@ -149,10 +195,10 @@ init :: proc(config: engine.PlatformConfig) {
 	}
 
 	window = sdl.CreateWindow(
-		parsed_config.title,
-		parsed_config.window_width,
-		parsed_config.window_height,
-		parsed_config.flags,
+		platform_config.title,
+		platform_config.window_width,
+		platform_config.window_height,
+		platform_config.flags,
 	)
 	if (window == nil) {
 		sdl.LogError(
@@ -201,7 +247,12 @@ init :: proc(config: engine.PlatformConfig) {
 
 	formats = sdl.GetGPUShaderFormats(device)
 
-	if !sdl.SetDefaultTextureScaleMode(renderer, sdl.ScaleMode.NEAREST) {
+	sdl.LogDebug(
+		cast(i32)sdl.LogCategory.CUSTOM,
+		"Setting scale mode to %d",
+		platform_config.scale_mode,
+	)
+	if !sdl.SetDefaultTextureScaleMode(renderer, platform_config.scale_mode) {
 		sdl.LogError(
 			cast(i32)sdl.LogCategory.CUSTOM,
 			"SDL failed to set texture mode to nearest: %s",
@@ -1039,7 +1090,11 @@ shutdown :: proc() {
 	ttf.DestroyRendererTextEngine(text_engine)
 	ttf.Quit()
 
+	// platform
 	platform_storage_destroy()
+	platform_config_destroy(platform_config)
+
+
 	sdl.DestroyGPUDevice(device)
 	sdl.DestroyRenderer(renderer)
 	sdl.DestroyWindow(window)
@@ -1482,11 +1537,18 @@ platform_storage_destroy :: proc() {
 
 
 platform_storage_init_writer :: proc(storage: engine.Storage) -> bool {
+	ensure(platform_config.org != nil)
+	ensure(platform_config.app != nil)
+
 	switch storage {
 	case .FILE:
 		platform_storage.writable = sdl.OpenFileStorage(".")
 	case .USER:
-		platform_storage.writable = sdl.OpenUserStorage(ORG, APP, 0)
+		platform_storage.writable = sdl.OpenUserStorage(
+			platform_config.org,
+			platform_config.app,
+			0,
+		)
 	}
 	if (platform_storage.writable == nil) {
 		sdl.LogError(

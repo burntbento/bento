@@ -1,12 +1,25 @@
 package engine
 
 
+ScaleMode :: enum {
+	NEAREST,
+	LINEAR,
+	PIXELART,
+}
+
 // PlatformConfig is used to set settings of platform layer
 PlatformConfig :: struct {
 	title:         string,
 	window_width:  int,
 	window_height: int,
 	fullscreen:    bool,
+
+	// scale mode
+	scale_mode:    ScaleMode,
+
+	// storage
+	org:           string,
+	app:           string,
 }
 
 // Platform is a v table that is filled in the execute logic
