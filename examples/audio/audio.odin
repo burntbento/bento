@@ -19,6 +19,8 @@ screen_height: int // height of the screen in pixels
 
 // audio settings
 music: engine.AudioClip
+music_state: bool
+music_handle: int
 music_settings: ^engine.AudioSettings
 
 // -- Main Loop -- //
@@ -78,13 +80,23 @@ init :: proc(platform: ^engine.Platform) {
 	music_settings.loop = true
 	music_settings.volume = 0.8
 
-	engine.audio_play(state, music, music_settings)
+	music_handle = engine.audio_play(state, music, music_settings)
+	music_state = true
 }
 
 update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 
 	// update audio state
 	engine.audio_update(state)
+
+	if engine.input_pressed(input, engine.InputType.INPUT_KEY_SPACE) {
+		if music_state {
+			engine.audio_pause(state, music_handle)
+		} else {
+			engine.audio_resume(state, music_handle)
+		}
+		music_state = !music_state
+	}
 
 	return true
 }

@@ -1365,6 +1365,17 @@ destroy_all_sounds :: proc() {
 	stream_count = 0
 }
 
+// TODO: make safe
+pause_sound :: proc(handle: int) -> bool {
+	stream := streams[handle]
+	return sdl.PauseAudioStreamDevice(stream)
+}
+
+resume_sound :: proc(handle: int) -> bool {
+	stream := streams[handle]
+	return sdl.ResumeAudioStreamDevice(stream)
+}
+
 play_sound :: proc(format, channels, freq: int, data: ^u8, length: int, volume: f64) -> int {
 	spec: sdl.AudioSpec = {
 		format   = sdl.AudioFormat(format),

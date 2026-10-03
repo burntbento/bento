@@ -57,6 +57,8 @@ engine_run :: proc(game_data: ^Game) {
 		destroy_all_sounds               = platform.destroy_all_sounds,
 		load_sound                       = platform.load_sound,
 		play_sound                       = platform.play_sound,
+		resume_sound                     = platform.resume_sound,
+		pause_sound                      = platform.pause_sound,
 		is_sound_playing                 = platform.is_sound_playing,
 		destroy_all_fonts                = platform.destroy_all_fonts,
 		load_font                        = platform.load_font,
