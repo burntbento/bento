@@ -1,4 +1,6 @@
-![logo](logo/bento.png)
+<p align="center">
+<img width="450" src="logo/bento.png" alt="Bento logo">
+</p>
 
 # bento
 
