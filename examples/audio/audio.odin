@@ -1,4 +1,5 @@
 // credit journey.wav https://chajamakesmusic.itch.io/cute-and-silly-rpg-music-pack
+// credit font.ttf https://managore.itch.io/m5x7
 
 package audio
 
@@ -22,6 +23,12 @@ music: engine.AudioClip
 music_state: bool
 music_handle: int
 music_settings: ^engine.AudioSettings
+
+// font handle
+font_handle: int
+font_w: int
+font_h: int
+heading :: "Click to pause!"
 
 // -- Main Loop -- //
 
@@ -82,6 +89,10 @@ init :: proc(platform: ^engine.Platform) {
 
 	music_handle = engine.audio_play(state, music, music_settings)
 	music_state = true
+
+	// font
+	font_handle = engine.load_font("examples/audio/font.ttf", 64, state)
+	font_w, font_h = state.platform.measure_text(font_handle, heading)
 }
 
 update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
@@ -89,7 +100,7 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 	// update audio state
 	engine.audio_update(state)
 
-	if engine.input_pressed(input, engine.InputType.INPUT_KEY_SPACE) {
+	if engine.input_pressed(input, engine.InputType.INPUT_MOUSE_BUTTON_LEFT) {
 		if music_state {
 			engine.audio_pause(state, music_handle)
 		} else {
@@ -97,17 +108,6 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 		}
 		music_state = !music_state
 	}
-
-	if engine.input_pressed(input, engine.InputType.INPUT_KEY_UP) {
-		music_settings.volume += 0.1
-		engine.audio_set_volume(state, music_handle, music_settings.volume)
-	}
-
-	if engine.input_pressed(input, engine.InputType.INPUT_KEY_DOWN) {
-		music_settings.volume -= 0.1
-		engine.audio_set_volume(state, music_handle, music_settings.volume)
-	}
-
 	return true
 }
 
@@ -116,23 +116,18 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	// resetting here makes sure that memory doesnt build up
 	engine.cmd_reset(state.cmdbuf)
 
-	// set rect width
-	rect_width := f64(screen_width) * 0.25
-
 	// flush screen with a blank color
 	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
 
-	// draw red rectangle in the center of the screen
-	engine.cmd_draw_rect(
+	// draw text
+	engine.cmd_draw_text(
 		state.cmdbuf,
-		engine.rect(
-			f64(screen_width) / 2 - 0.5 * rect_width,
-			f64(screen_height) / 2 - 0.5 * rect_width,
-			rect_width,
-			rect_width,
-		),
-		engine.RED,
+		engine.vector2(f64(screen_width - font_w) / 2, f64(screen_height - font_h) / 2),
+		heading,
+		font_handle, // use default font
+		engine.BLACK,
 	)
+
 	return state.cmdbuf
 }
 

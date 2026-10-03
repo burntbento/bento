@@ -83,6 +83,8 @@ placeholder_texture: ^sdl.Texture // pointer for placeholder texture
 textures: [dynamic]^sdl.Texture // dynamic array of textures
 streams: [MAX_CONCURRENT_AUDIO_STREAMS]^sdl.AudioStream // array of audio streams
 stream_count := 0 // current stream count, could also migrate to dynamic array
+
+// fonts
 fonts: [dynamic]^ttf.Font // dynamic array of ttf fonts
 text_engine: ^ttf.TextEngine // pointer to sdl text engine
 
