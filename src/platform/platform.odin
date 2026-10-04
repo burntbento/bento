@@ -1397,6 +1397,56 @@ set_sound_volume :: proc(handle: int, volume: f64) -> bool {
 	return sdl.SetAudioStreamGain(stream, f32(volume))
 }
 
+@(private)
+create_and_bind_stream :: proc(spec: ^sdl.AudioSpec) -> ^sdl.AudioStream {
+	if (stream_count >= MAX_CONCURRENT_AUDIO_STREAMS) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL could not play sound: all audio streams in use",
+		)
+		return nil
+	}
+
+	new_stream := sdl.CreateAudioStream(spec, nil)
+	if new_stream == nil {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL could not create new stream: %s",
+			sdl.GetError(),
+		)
+		return nil
+	}
+
+	if !sdl.BindAudioStream(audio_device, new_stream) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL could not create new stream: %s",
+			sdl.GetError(),
+		)
+		return nil
+	}
+	return new_stream
+}
+
+// set existing audio stream
+set_audio_stream :: proc(stream: ^sdl.AudioStream, data: rawptr, length: int, volume: f64) {
+	if !sdl.SetAudioStreamGain(stream, f32(volume)) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL could not set audio stream grain: %s",
+			sdl.GetError(),
+		)
+	}
+	if !sdl.PutAudioStreamData(stream, data, i32(length)) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL could not put audio stream data: %s",
+			sdl.GetError(),
+		)
+	}
+}
+
+
 play_sound :: proc(format, channels, freq: int, data: ^u8, length: int, volume: f64) -> int {
 	spec: sdl.AudioSpec = {
 		format   = sdl.AudioFormat(format),
@@ -1424,51 +1474,16 @@ play_sound :: proc(format, channels, freq: int, data: ^u8, length: int, volume: 
 	if free_stream != nil {
 		new_stream = free_stream
 	} else {
-		if (stream_count >= MAX_CONCURRENT_AUDIO_STREAMS) {
-			sdl.LogError(
-				cast(i32)sdl.LogCategory.CUSTOM,
-				"SDL could not play sound: all audio streams in use",
-			)
-			return -1
-		}
-		new_stream = sdl.CreateAudioStream(&spec, nil)
+		new_stream = create_and_bind_stream(&spec)
 		if new_stream == nil {
-			sdl.LogError(
-				cast(i32)sdl.LogCategory.CUSTOM,
-				"SDL could not create new stream: %s",
-				sdl.GetError(),
-			)
 			return -1
 		}
 
-		if !sdl.BindAudioStream(audio_device, new_stream) {
-			sdl.LogError(
-				cast(i32)sdl.LogCategory.CUSTOM,
-				"SDL could not create new stream: %s",
-				sdl.GetError(),
-			)
-			return -1
-		}
 		streams[stream_count] = new_stream
 		handle = stream_count
 		stream_count += 1
 	}
-
-	if !sdl.SetAudioStreamGain(new_stream, f32(volume)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not set audio stream grain: %s",
-			sdl.GetError(),
-		)
-	}
-	if !sdl.PutAudioStreamData(new_stream, data, i32(length)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not put audio stream data: %s",
-			sdl.GetError(),
-		)
-	}
-
+	set_audio_stream(new_stream, data, length, volume)
 	return handle
 }
 
