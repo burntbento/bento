@@ -922,7 +922,7 @@ create_placeholder_texture :: proc() {
 		panic("failed to load texture")
 	}
 
-	if (!sdl.SetTextureScaleMode(placeholder_texture, sdl.ScaleMode.NEAREST)) {
+	if (!sdl.SetTextureScaleMode(placeholder_texture, platform_config.scale_mode)) {
 		sdl.LogError(
 			cast(i32)sdl.LogCategory.CUSTOM,
 			"could not set texture scale mode %s",
