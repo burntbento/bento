@@ -78,7 +78,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 			rect_width,
 			rect_width,
 		),
-		engine.RED,
+		engine.MAGENTA,
 	)
 	return state.cmdbuf
 }

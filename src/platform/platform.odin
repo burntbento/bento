@@ -56,6 +56,13 @@ formats: sdl.GPUShaderFormat
 cmdbuf: ^sdl.GPUCommandBuffer
 swapchain_texture: ^sdl.GPUTexture
 render_pass: ^sdl.GPURenderPass
+pipeline: ^sdl.GPUGraphicsPipeline
+vertex_buffer: ^sdl.GPUBuffer
+
+PositionColorVertex :: struct {
+	x, y, z:    f32,
+	r, g, b, a: u8,
+}
 
 ShaderData :: struct {
 	shader: ^sdl.GPUShader,
@@ -251,6 +258,8 @@ init :: proc(config: engine.PlatformConfig) {
 		panic("initialisation error: gpu device failed to claim window")
 	}
 
+	// pipeline init
+	init_pipeline()
 
 	// storage
 	platform_storage_init()
@@ -286,8 +295,193 @@ init :: proc(config: engine.PlatformConfig) {
 
 }
 
-begin_frame :: proc() {
+get_base_path :: proc() -> cstring {
+	return sdl.GetBasePath()
+}
 
+load_shader :: proc(
+	device: ^sdl.GPUDevice,
+	file: string,
+	sampler_count: u32,
+	uniform_buffer_count: u32,
+	storage_buffer_count: u32,
+	storage_texture_count: u32,
+) -> ^sdl.GPUShader {
+
+	stage: sdl.GPUShaderStage
+	if strings.contains(file, ".vert") {
+		stage = .VERTEX
+	} else if strings.contains(file, ".frag") {
+		stage = .FRAGMENT
+	} else {
+		sdl.Log("invalid shader")
+		return nil
+	}
+
+
+	backends := sdl.GetGPUShaderFormats(device)
+	format: sdl.GPUShaderFormat = {}
+
+	base_path := get_base_path()
+	entrypoint: cstring
+	full_path: string
+	if .SPIRV in backends {
+		full_path = fmt.tprintf("%s/shaders/compiled/%s.spv", base_path, file)
+		format = {.SPIRV}
+		entrypoint = "main"
+	} else if .MSL in backends {
+		full_path = fmt.tprintf("%s/shaders/compiled/%s.msl", base_path, file)
+		format = {.MSL}
+		entrypoint = "main0"
+	} else if .DXIL in backends {
+		full_path = fmt.tprintf("%s/shaders/compiled/%s.dxil", base_path, file)
+		format = {.DXIL}
+		entrypoint = "main"
+	} else {
+		sdl.Log("failed choosing backend format")
+		return nil
+	}
+
+	code_size: uint
+	code := sdl.LoadFile(strings.clone_to_cstring(full_path, context.temp_allocator), &code_size)
+	defer sdl.free(code)
+	if code == nil {
+		sdl.LogError(cast(i32)sdl.LogCategory.CUSTOM, "failed to read file: %s", sdl.GetError())
+		return nil
+	}
+
+	gpu_shader_info := sdl.GPUShaderCreateInfo {
+		code                = cast([^]u8)code,
+		code_size           = code_size,
+		entrypoint          = entrypoint,
+		format              = format,
+		stage               = stage,
+		num_samplers        = sampler_count,
+		num_uniform_buffers = uniform_buffer_count,
+		num_storage_buffers = storage_texture_count,
+	}
+
+	shader := sdl.CreateGPUShader(device, gpu_shader_info)
+	if shader == nil {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"failed to create shader: %s",
+			sdl.GetError(),
+		)
+		return nil
+	}
+	return shader
+}
+
+// triangle pipeline
+init_pipeline :: proc() {
+	vertex_shader := load_shader(device, "PositionColor.vert", 0, 0, 0, 0)
+	if vertex_shader == nil {
+		panic("failed t init pipeline, vertex_shader")
+	}
+	defer sdl.ReleaseGPUShader(device, vertex_shader)
+
+	fragment_shader := load_shader(device, "SolidColor.frag", 0, 1, 0, 0)
+	if fragment_shader == nil {
+		panic("failed t init pipeline, frag")
+	}
+	defer sdl.ReleaseGPUShader(device, fragment_shader)
+
+	pipeline_create_info := sdl.GPUGraphicsPipelineCreateInfo {
+		target_info = {
+			num_color_targets = 1,
+			color_target_descriptions = raw_data(
+				[]sdl.GPUColorTargetDescription {
+					{format = sdl.GetGPUSwapchainTextureFormat(device, window)},
+				},
+			),
+		},
+		vertex_input_state = sdl.GPUVertexInputState {
+			num_vertex_buffers = 1,
+			vertex_buffer_descriptions = raw_data(
+				[]sdl.GPUVertexBufferDescription {
+					{
+						slot = 0,
+						input_rate = .VERTEX,
+						instance_step_rate = 0,
+						pitch = size_of(PositionColorVertex),
+					},
+				},
+			),
+			num_vertex_attributes = 2,
+			vertex_attributes = raw_data(
+				[]sdl.GPUVertexAttribute {
+					{buffer_slot = 0, format = .FLOAT3, location = 0, offset = 0},
+					{
+						buffer_slot = 0,
+						format = .UBYTE4_NORM,
+						location = 1,
+						offset = size_of(c.float) * 3,
+					},
+				},
+			),
+		},
+		primitive_type = .TRIANGLELIST,
+		vertex_shader = vertex_shader,
+		fragment_shader = fragment_shader,
+	}
+
+	pipeline = sdl.CreateGPUGraphicsPipeline(device, pipeline_create_info)
+	if pipeline == nil {
+		sdl.Log("failed to create fill pipeline")
+		return
+	}
+
+	vertex_buffer = sdl.CreateGPUBuffer(
+		device,
+		sdl.GPUBufferCreateInfo{usage = {.VERTEX}, size = size_of(PositionColorVertex) * 1024},
+	)
+
+	transfer_buffer := sdl.CreateGPUTransferBuffer(
+		device,
+		sdl.GPUTransferBufferCreateInfo{usage = .UPLOAD, size = size_of(PositionColorVertex) * 3},
+	)
+
+	raw := sdl.MapGPUTransferBuffer(device, transfer_buffer, false)
+	transfer_data := cast([^]PositionColorVertex)raw
+
+	// triangle
+	transfer_data[0] = PositionColorVertex{-1, -1, 0, 255, 255, 255, 255}
+	transfer_data[1] = PositionColorVertex{1, -1, 0, 255, 255, 255, 255}
+	transfer_data[2] = PositionColorVertex{0, 1, 0, 255, 255, 255, 255}
+
+	// square
+	transfer_data[3] = PositionColorVertex{-1, -1, 0, 255, 255, 255, 255}
+	transfer_data[4] = PositionColorVertex{1, -1, 0, 255, 255, 255, 255}
+	transfer_data[5] = PositionColorVertex{1, 1, 0, 255, 255, 255, 255}
+	transfer_data[6] = PositionColorVertex{-1, -1, 0, 255, 255, 255, 255}
+	transfer_data[7] = PositionColorVertex{1, 1, 0, 255, 255, 255, 255}
+	transfer_data[8] = PositionColorVertex{-1, 1, 0, 255, 255, 255, 255}
+
+	sdl.UnmapGPUTransferBuffer(device, transfer_buffer)
+
+	upload_cmdbuf := sdl.AcquireGPUCommandBuffer(device)
+	copyPass := sdl.BeginGPUCopyPass(upload_cmdbuf)
+
+	sdl.UploadToGPUBuffer(
+		copyPass,
+		sdl.GPUTransferBufferLocation{transfer_buffer = transfer_buffer, offset = 0},
+		sdl.GPUBufferRegion {
+			buffer = vertex_buffer,
+			offset = 0,
+			size = size_of(PositionColorVertex) * 9,
+		},
+		false,
+	)
+
+	sdl.EndGPUCopyPass(copyPass)
+	_ = sdl.SubmitGPUCommandBuffer(upload_cmdbuf)
+	sdl.ReleaseGPUTransferBuffer(device, transfer_buffer)
+
+}
+
+
+begin_frame :: proc() {
 	// aquire cmdbuffer
 	cmdbuf = sdl.AcquireGPUCommandBuffer(device)
 	if cmdbuf == nil {
@@ -309,6 +503,10 @@ begin_frame :: proc() {
 }
 
 end_frame :: proc() {
+	defer render_pass = nil
+	if swapchain_texture != nil {
+		sdl.EndGPURenderPass(render_pass)
+	}
 	if !sdl.SubmitGPUCommandBuffer(cmdbuf) {
 		sdl.LogError(
 			cast(i32)sdl.LogCategory.CUSTOM,
@@ -451,6 +649,8 @@ engine_color_to_fcolor :: #force_inline proc(color: engine.Color) -> sdl.FColor 
 }
 
 clear_screen :: proc(color: engine.Color) {
+	if swapchain_texture == nil do return
+
 	color_target_info := sdl.GPUColorTargetInfo {
 		texture     = swapchain_texture,
 		clear_color = engine_color_to_fcolor(color),
@@ -458,13 +658,28 @@ clear_screen :: proc(color: engine.Color) {
 		store_op    = .STORE,
 	}
 	render_pass = sdl.BeginGPURenderPass(cmdbuf, &color_target_info, 1, nil)
-	sdl.EndGPURenderPass(render_pass)
 }
 
 draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
 }
 
 draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
+	if swapchain_texture == nil do return
+
+	sdl.SetGPUViewport(
+		render_pass,
+		{f32(rect.x), f32(rect.y), f32(rect.width), f32(rect.height), 0.1, 0.1},
+	)
+	shader_color := engine_color_to_fcolor(color)
+	sdl.BindGPUGraphicsPipeline(render_pass, pipeline)
+	sdl.PushGPUFragmentUniformData(cmdbuf, 0, rawptr(&shader_color), size_of(shader_color))
+	sdl.BindGPUVertexBuffers(
+		render_pass,
+		0,
+		&sdl.GPUBufferBinding{buffer = vertex_buffer, offset = 0},
+		1,
+	)
+	sdl.DrawGPUPrimitives(render_pass, 6, 2, 3, 0)
 }
 
 draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
@@ -666,12 +881,22 @@ destroy_all_fonts :: proc() {
 
 
 shutdown :: proc() {
+	if !sdl.WaitForGPUIdle(device) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"error waiting for gpu to be idle: %s",
+			sdl.GetError(),
+		)
+	}
 
 	sdl.LogInfo(cast(i32)sdl.LogCategory.APPLICATION, "Shutting down...")
 	if (gamepad != nil) {
 		sdl.CloseGamepad(gamepad)
 		gamepad = nil
 	}
+
+	sdl.ReleaseGPUGraphicsPipeline(device, pipeline)
+	sdl.ReleaseGPUBuffer(device, vertex_buffer)
 
 	// destory textures
 	destroy_all_textures()
@@ -684,7 +909,7 @@ shutdown :: proc() {
 	sdl.CloseAudioDevice(audio_device)
 
 	// shutdown fonts
-	ttf.DestroyRendererTextEngine(text_engine)
+	ttf.DestroyGPUTextEngine(text_engine)
 	ttf.Quit()
 
 	// platform
