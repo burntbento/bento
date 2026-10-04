@@ -1412,9 +1412,7 @@ play_sound :: proc(format, channels, freq: int, data: ^u8, length: int, volume: 
 		if (stream != nil && sdl.GetAudioStreamAvailable(stream) == 0) {
 			stream_spec: sdl.AudioSpec
 			sdl.GetAudioStreamFormat(stream, &stream_spec, nil)
-			if (stream_spec.format == spec.format &&
-				   stream_spec.channels == spec.channels &&
-				   stream_spec.freq == spec.freq) {
+			if stream_spec == spec {
 				free_stream = stream
 				handle = i
 				break
@@ -1423,7 +1421,7 @@ play_sound :: proc(format, channels, freq: int, data: ^u8, length: int, volume: 
 	}
 
 	new_stream: ^sdl.AudioStream
-	if (free_stream != nil) {
+	if free_stream != nil {
 		new_stream = free_stream
 	} else {
 		if (stream_count >= MAX_CONCURRENT_AUDIO_STREAMS) {
@@ -1434,7 +1432,7 @@ play_sound :: proc(format, channels, freq: int, data: ^u8, length: int, volume: 
 			return -1
 		}
 		new_stream = sdl.CreateAudioStream(&spec, nil)
-		if (new_stream == nil) {
+		if new_stream == nil {
 			sdl.LogError(
 				cast(i32)sdl.LogCategory.CUSTOM,
 				"SDL could not create new stream: %s",
@@ -1443,7 +1441,7 @@ play_sound :: proc(format, channels, freq: int, data: ^u8, length: int, volume: 
 			return -1
 		}
 
-		if (!sdl.BindAudioStream(audio_device, new_stream)) {
+		if !sdl.BindAudioStream(audio_device, new_stream) {
 			sdl.LogError(
 				cast(i32)sdl.LogCategory.CUSTOM,
 				"SDL could not create new stream: %s",
@@ -1456,8 +1454,20 @@ play_sound :: proc(format, channels, freq: int, data: ^u8, length: int, volume: 
 		stream_count += 1
 	}
 
-	sdl.SetAudioStreamGain(new_stream, f32(volume))
-	sdl.PutAudioStreamData(new_stream, data, i32(length))
+	if !sdl.SetAudioStreamGain(new_stream, f32(volume)) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL could not set audio stream grain: %s",
+			sdl.GetError(),
+		)
+	}
+	if !sdl.PutAudioStreamData(new_stream, data, i32(length)) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL could not put audio stream data: %s",
+			sdl.GetError(),
+		)
+	}
 
 	return handle
 }
