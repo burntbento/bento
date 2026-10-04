@@ -47,6 +47,7 @@ audio_init :: proc(allocator := context.allocator) {
 	reserve(&audio_system.assets, AUDIO_MAX_SOUNDS)
 }
 
+@(private)
 audio_play_internal :: proc(state: ^GameState, clip: AudioClip, settings: ^AudioSettings) -> int {
 	if (!clip.ok) {
 		return -1
@@ -66,6 +67,7 @@ audio_play_internal :: proc(state: ^GameState, clip: AudioClip, settings: ^Audio
 audio_repeat :: proc(state: ^GameState, clip: AudioClip, settings: ^AudioSettings) {
 	audio_play_internal(state, clip, settings)
 }
+
 
 audio_update :: proc(state: ^GameState) {
 	sounds_to_delete: [AUDIO_MAX_SOUNDS]int = {}
@@ -163,9 +165,21 @@ audio_load_private :: proc(state: ^GameState, path: string) -> AudioClip {
 	return clip
 }
 
-audio_play :: proc(state: ^GameState, clip: AudioClip, settings: ^AudioSettings) {
+audio_pause :: proc(state: ^GameState, handle: int) -> bool {
+	return state.platform.pause_sound(handle)
+}
+
+audio_resume :: proc(state: ^GameState, handle: int) -> bool {
+	return state.platform.resume_sound(handle)
+}
+
+audio_set_volume :: proc(state: ^GameState, handle: int, volume: f64) -> bool {
+	return state.platform.set_sound_volume(handle, volume)
+}
+
+audio_play :: proc(state: ^GameState, clip: AudioClip, settings: ^AudioSettings) -> int {
 	if audio_system.sound_count >= AUDIO_MAX_SOUNDS {
-		return
+		return -1
 	}
 
 	handle := audio_play_internal(state, clip, settings)
@@ -178,4 +192,5 @@ audio_play :: proc(state: ^GameState, clip: AudioClip, settings: ^AudioSettings)
 
 	audio_system.sounds[audio_system.sound_count] = sound
 	audio_system.sound_count += 1
+	return handle
 }

@@ -49,6 +49,9 @@ Platform :: struct {
 
 	// audio
 	is_sound_playing:                 proc(handle: int) -> bool,
+	pause_sound:                      proc(handle: int) -> bool,
+	resume_sound:                     proc(handle: int) -> bool,
+	set_sound_volume:                 proc(handle: int, volume: f64) -> bool,
 	play_sound:                       proc(
 		format, channels, freq: int,
 		data: ^u8,
