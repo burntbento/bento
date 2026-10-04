@@ -1428,15 +1428,16 @@ create_and_bind_stream :: proc(spec: ^sdl.AudioSpec) -> ^sdl.AudioStream {
 	return new_stream
 }
 
-set_audio_stream :: proc(new_stream: ^sdl.AudioStream, data: rawptr, length: int, volume: f64) {
-	if !sdl.SetAudioStreamGain(new_stream, f32(volume)) {
+// set existing audio stream
+set_audio_stream :: proc(stream: ^sdl.AudioStream, data: rawptr, length: int, volume: f64) {
+	if !sdl.SetAudioStreamGain(stream, f32(volume)) {
 		sdl.LogError(
 			cast(i32)sdl.LogCategory.CUSTOM,
 			"SDL could not set audio stream grain: %s",
 			sdl.GetError(),
 		)
 	}
-	if !sdl.PutAudioStreamData(new_stream, data, i32(length)) {
+	if !sdl.PutAudioStreamData(stream, data, i32(length)) {
 		sdl.LogError(
 			cast(i32)sdl.LogCategory.CUSTOM,
 			"SDL could not put audio stream data: %s",
