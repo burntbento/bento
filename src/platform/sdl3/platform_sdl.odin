@@ -92,7 +92,6 @@ DEADZONE: f64
 
 NUM_CIRCLE_SEGMENTS :: 48
 
-
 @(private)
 PlatformConfig :: struct {
 	title:         cstring,

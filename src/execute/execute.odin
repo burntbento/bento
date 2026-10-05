@@ -42,6 +42,7 @@ engine_run :: proc(game_data: ^Game) {
 	defer engine.profiler_shutdown()
 
 	platform.init(game_data.platform_config)
+	defer platform.shutdown()
 
 	platform_data := engine.Platform {
 		get_file_size                    = platform.get_file_size,
@@ -80,6 +81,7 @@ engine_run :: proc(game_data: ^Game) {
 	input: engine.GameInput
 
 	game_data.game_init(&platform_data)
+	defer game_data.game_shutdown()
 
 	game_is_running := true
 
@@ -181,6 +183,4 @@ engine_run :: proc(game_data: ^Game) {
 		last_time = current_time
 	}
 
-	game_data.game_shutdown()
-	platform.shutdown()
 }
