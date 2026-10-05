@@ -2,91 +2,75 @@ package platform_opengl
 
 import "bento:engine"
 import "core:c"
-import "core:log"
 import "core:mem"
 import "core:strings"
 import gl "vendor:OpenGL"
-import "vendor:glfw"
+import sdl "vendor:sdl3"
 
 // -- Globals -- //
-window: glfw.WindowHandle
+window: ^sdl.Window
 platform_config: ^PlatformConfig
+gl_context: sdl.GLContext
 
-platform_logger: log.Logger
 
 // main
 init :: proc(config: engine.PlatformConfig) {
 
-	// set logging
-	init_logger()
-	context.logger = platform_logger
-
 	platform_config = platform_config_new(config)
-	log.info("Engine starting, chose OpenGL backend")
 
 	// init glfw
-	glfw.Init()
-	log.info("GLFW initialising...")
+	if !sdl.Init(sdl.INIT_VIDEO) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL could not be initialised: %s",
+			sdl.GetError(),
+		)
+	}
 
 	// set window hints
-	glfw.WindowHint(glfw.CONTEXT_VERSION_MAJOR, 4)
-	glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, 1)
-	glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-	glfw.WindowHint(glfw.OPENGL_FORWARD_COMPAT, gl.TRUE)
+	sdl.GL_SetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 4)
+	sdl.GL_SetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 1)
+	sdl.GL_SetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, i32(sdl.GL_CONTEXT_PROFILE_CORE))
+	sdl.GL_SetAttribute(sdl.GL_DOUBLEBUFFER, 1)
 
 	// set window
-	window = glfw.CreateWindow(
+	window = sdl.CreateWindow(
+		platform_config.title,
 		platform_config.window_width,
 		platform_config.window_height,
-		platform_config.title,
-		nil,
-		nil,
+		{.OPENGL},
 	)
 	if window == nil {
-		log.error("GLFW window is nil, exiting")
 		panic("Failed to open GLFW window")
 	}
-	log.info("GLFW set window")
 
-	glfw.MakeContextCurrent(window)
+	// create context
+	gl_context = sdl.GL_CreateContext(window)
+	sdl.GL_MakeCurrent(window, gl_context)
 
-	gl.load_up_to(4, 1, glfw.gl_set_proc_address)
-	major, minor: i32
-	gl.GetIntegerv(gl.MAJOR_VERSION, &major)
-	gl.GetIntegerv(gl.MINOR_VERSION, &minor)
-	log.infof("OpenGL Version: %d.%d", major, minor)
+	// load function pointers
+	gl.load_up_to(4, 1, sdl.gl_set_proc_address)
 
-
-	// set framesize callback
-	glfw.SetFramebufferSizeCallback(window, framesize_buffer_callback)
-	log.info("GLFW set framebuffer callback")
-
-	w, h := glfw.GetFramebufferSize(window)
-	gl.Viewport(0, 0, w, h)
 }
 
 begin_frame :: proc() {}
 
 end_frame :: proc() {
-	glfw.SwapBuffers(window)
+	sdl.GL_SwapWindow(window)
 }
 
 shutdown :: proc() {
-	context.logger = platform_logger
-
-	// last log then destroy
-	log.info("Engine shutting down")
-	defer log.destroy_console_logger(context.logger)
 
 	// destroy platform stuff
 	platform_config_destroy(platform_config)
 
 	// destroy glfw
-	glfw.DestroyWindow(window)
+	sdl.DestroyWindow(window)
 
+	sdl.GL_DestroyContext(gl_context)
 
 	// final termation
-	glfw.Terminate()
+	sdl.Quit()
 }
 
 // files io
@@ -257,11 +241,14 @@ is_sound_playing :: proc(handle: int) -> bool {
 // input
 update_input :: proc(input: ^engine.GameInput) {
 
-	if glfw.WindowShouldClose(window) {
-		input.app_exit_requested = true
+	evt: sdl.Event
+	for sdl.PollEvent(&evt) {
+		if evt.type == sdl.EventType.QUIT {
+			input.app_exit_requested = true
+			break
+		}
 	}
 
-	glfw.PollEvents()
 }
 
 input_set_state :: proc(input: ^engine.GameInput, type: engine.InputType, state: f64) {}
@@ -290,12 +277,12 @@ get_deadzone :: proc() -> f64 {
 }
 
 get_performance_frequency :: proc() -> u64 {
-	return glfw.GetTimerFrequency()
+	return sdl.GetPerformanceFrequency()
 }
 
 
 get_performance_counter :: proc() -> u64 {
-	return glfw.GetTimerValue()
+	return sdl.GetPerformanceCounter()
 }
 
 logger :: proc(msg: string, args: ..any) {}
@@ -348,26 +335,15 @@ platform_config_destroy :: proc(platform_config: ^PlatformConfig) {
 	free(platform_config, allocator)
 }
 
-// callbacks
-@(private)
-framesize_buffer_callback :: proc "c" (window: glfw.WindowHandle, width: c.int, height: c.int) {
-	gl.Viewport(0, 0, width, height)
-}
 
 // helpers
+
 @(private)
 GLColor :: struct {
 	r, g, b, a: f32,
 }
+
 @(private)
 engine_color_to_gl_color :: #force_inline proc(color: engine.Color) -> GLColor {
 	return GLColor{r = f32(color.r), g = f32(color.g), b = f32(color.b), a = f32(color.a)}
-}
-
-@(private)
-init_logger :: proc() {
-	platform_logger = log.create_console_logger(
-		lowest = .Debug,
-		opt = {.Level, .Date, .Time, .Short_File_Path, .Terminal_Color},
-	)
 }
