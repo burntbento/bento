@@ -1,10 +1,11 @@
 
 example ?= rectangle
+backend ?= sdl3
 
 flags = -file -vet -strict-style -vet-tabs -warnings-as-errors -collection:bento=src
 
 run-example:
-	odin run ./examples/$(example)/$(example).odin $(flags)
+	odin run ./examples/$(example)/$(example).odin $(flags) -define:BACKEND=$(backend)
 
 
 
