@@ -7,6 +7,10 @@ import "core:strings"
 import gl "vendor:OpenGL"
 import sdl "vendor:sdl3"
 
+// -- OPENGL Version -- //
+MAJOR :: 4
+MINOR :: 6
+
 // -- Globals -- //
 window: ^sdl.Window
 platform_config: ^PlatformConfig
@@ -18,6 +22,9 @@ init :: proc(config: engine.PlatformConfig) {
 
 	platform_config = platform_config_new(config)
 
+	// INFO: set log verbosiity, turn off in production, should we write somewhere?
+	sdl.SetLogPriorities(.VERBOSE)
+
 	// init glfw
 	if !sdl.Init(sdl.INIT_VIDEO) {
 		sdl.LogError(
@@ -28,8 +35,8 @@ init :: proc(config: engine.PlatformConfig) {
 	}
 
 	// set window hints
-	sdl.GL_SetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 4)
-	sdl.GL_SetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 1)
+	sdl.GL_SetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, MAJOR)
+	sdl.GL_SetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, MINOR)
 	sdl.GL_SetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, i32(sdl.GL_CONTEXT_PROFILE_CORE))
 	sdl.GL_SetAttribute(sdl.GL_DOUBLEBUFFER, 1)
 
@@ -49,7 +56,7 @@ init :: proc(config: engine.PlatformConfig) {
 	sdl.GL_MakeCurrent(window, gl_context)
 
 	// load function pointers
-	gl.load_up_to(4, 1, sdl.gl_set_proc_address)
+	gl.load_up_to(MAJOR, MINOR, sdl.gl_set_proc_address)
 
 }
 
@@ -67,6 +74,7 @@ shutdown :: proc() {
 	// destroy glfw
 	sdl.DestroyWindow(window)
 
+	// destroy gl context
 	sdl.GL_DestroyContext(gl_context)
 
 	// final termation
