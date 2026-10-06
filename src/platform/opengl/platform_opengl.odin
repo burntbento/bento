@@ -12,7 +12,7 @@ import sdl "vendor:sdl3"
 
 // -- OPENGL Version -- //
 MAJOR :: 4
-MINOR :: 3
+MINOR :: 1
 
 // -- Globals -- //
 window: ^sdl.Window
@@ -142,7 +142,9 @@ pop_canvas :: proc() {}
 destroy_all_textures :: proc() {}
 
 get_window_size :: proc() -> (int, int) {
-	return 0, 0
+	w, h: i32
+	sdl.GetWindowSizeInPixels(window, &w, &h)
+	return int(w), int(h)
 }
 
 get_render_size :: proc() -> (int, int) {
@@ -164,14 +166,21 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 		return
 	}
 
-	v_proj := gl.GetUniformLocation(shader_program, "u_proj")
+	v_proj := gl.GetUniformLocation(shader_program, "v_proj")
+	v_translation := gl.GetUniformLocation(shader_program, "v_translation")
+	v_scale := gl.GetUniformLocation(shader_program, "v_scale")
+
 	projection := glm.mat4Ortho3d(0, 800, 600, 0, -1, 1)
-	// model := glm.identity(glm.mat4) * glm.mat4Translate({f32(rect.x), f32(rect.y), 0})
+	translate := glm.mat4Translate({f32(rect.x), f32(rect.y), 0})
+	scale := glm.mat4Scale({f32(rect.width), f32(rect.height), 1})
 
 	gl.UseProgram(shader_program)
 
 	gl.Uniform4f(v_color, gl_color.r, gl_color.g, gl_color.b, gl_color.a)
-	gl.UniformMatrix4fv(v_proj, 1, gl.TRUE, &projection[0][0])
+
+	gl.UniformMatrix4fv(v_proj, 1, gl.FALSE, &projection[0][0])
+	gl.UniformMatrix4fv(v_translation, 1, gl.FALSE, &translate[0][0])
+	gl.UniformMatrix4fv(v_scale, 1, gl.FALSE, &scale[0][0])
 
 	gl.BindVertexArray(VAO)
 	defer gl.BindVertexArray(0)
@@ -547,7 +556,12 @@ GLColor :: struct {
 
 @(private)
 engine_color_to_gl_color :: #force_inline proc(color: engine.Color) -> GLColor {
-	return GLColor{r = f32(color.r), g = f32(color.g), b = f32(color.b), a = f32(color.a)}
+	return GLColor {
+		r = f32(color.r / 255),
+		g = f32(color.g / 255),
+		b = f32(color.b / 255),
+		a = f32(color.a / 255),
+	}
 }
 
 
@@ -579,8 +593,21 @@ init_shaders :: proc() {
 	gl.AttachShader(shader_program, frag_shader)
 	gl.LinkProgram(shader_program)
 
-	vertices := [?]f32{-0.5, -0.5, 0, 0, -0.5, 0.5, 0, 0, 0.5, -0.5, 0, 0, 0.5, 0.5, 0, 0}
-	indicies := [?]u32{0, 1, 2, 1, 3, 2}
+	vertices := [?]f32 {
+		1.0,
+		1.0,
+		0.0, // top right
+		1.0,
+		0.0,
+		0.0, // bottom right
+		0.0,
+		0.0,
+		0.0, // bottom left
+		0.0,
+		1.0,
+		0.0, // top left
+	}
+	indicies := [?]u32{0, 1, 3, 1, 2, 3}
 
 	// vertex array
 	gl.GenVertexArrays(1, &VAO)
@@ -605,12 +632,16 @@ init_shaders :: proc() {
 	// vertex attributes
 
 	// position
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 4 * size_of(f32), 0)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), 0)
 	gl.EnableVertexAttribArray(0)
 
 }
 
 destroy_shaders :: proc() {
+
+	gl.DeleteBuffers(1, &VBO)
+	gl.DeleteBuffers(1, &EBO)
+	gl.DeleteVertexArrays(1, &VAO)
 
 	gl.DeleteProgram(shader_program)
 	gl.DeleteShader(vertex_shader)
