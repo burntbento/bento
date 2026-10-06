@@ -3,6 +3,8 @@ package platform_opengl
 import "bento:engine"
 import "core:c"
 import "core:math"
+
+import glm "core:math/linalg/glsl"
 import "core:mem"
 import "core:strings"
 import gl "vendor:OpenGL"
@@ -10,7 +12,7 @@ import sdl "vendor:sdl3"
 
 // -- OPENGL Version -- //
 MAJOR :: 4
-MINOR :: 6
+MINOR :: 3
 
 // -- Globals -- //
 window: ^sdl.Window
@@ -21,6 +23,9 @@ gl_context: sdl.GLContext
 gamepad: ^sdl.Gamepad
 DEADZONE: f64
 
+// -- Shaders -- //
+triangle_vert_src := #load("../../../shaders/triangle.vert.glsl")
+triangle_frag_src := #load("../../../shaders/triangle.frag.glsl")
 
 // main
 init :: proc(config: engine.PlatformConfig) {
@@ -65,6 +70,9 @@ init :: proc(config: engine.PlatformConfig) {
 
 	// vsync, should allow to customise later
 	sdl.GL_SetSwapInterval(1)
+
+	// init shaders
+	init_shaders()
 }
 
 begin_frame :: proc() {}
@@ -148,7 +156,28 @@ clear_screen :: proc(color: engine.Color) {
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 }
 
-draw_rect :: proc(rect: engine.Rect, color: engine.Color) {}
+draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
+	gl_color := engine_color_to_gl_color(color)
+	v_color := gl.GetUniformLocation(shader_program, "vColor")
+	if v_color == -1 {
+		// log
+		return
+	}
+
+	v_proj := gl.GetUniformLocation(shader_program, "u_proj")
+	projection := glm.mat4Ortho3d(0, 800, 600, 0, -1, 1)
+	// model := glm.identity(glm.mat4) * glm.mat4Translate({f32(rect.x), f32(rect.y), 0})
+
+	gl.UseProgram(shader_program)
+
+	gl.Uniform4f(v_color, gl_color.r, gl_color.g, gl_color.b, gl_color.a)
+	gl.UniformMatrix4fv(v_proj, 1, gl.TRUE, &projection[0][0])
+
+	gl.BindVertexArray(VAO)
+	defer gl.BindVertexArray(0)
+	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+
+}
 
 draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {}
 
@@ -519,4 +548,71 @@ GLColor :: struct {
 @(private)
 engine_color_to_gl_color :: #force_inline proc(color: engine.Color) -> GLColor {
 	return GLColor{r = f32(color.r), g = f32(color.g), b = f32(color.b), a = f32(color.a)}
+}
+
+
+// -- OpenGL -- //
+
+shader_program: u32
+vertex_shader: u32
+frag_shader: u32
+
+VAO, VBO, EBO: u32
+
+@(private)
+init_shaders :: proc() {
+
+	// NOTE: Should error check
+	vex_src := cstring(&triangle_vert_src[0])
+	vertex_shader = gl.CreateShader(gl.VERTEX_SHADER)
+	gl.ShaderSource(vertex_shader, 1, &vex_src, nil)
+	gl.CompileShader(vertex_shader)
+
+	frag_src := cstring(&triangle_frag_src[0])
+	frag_shader = gl.CreateShader(gl.FRAGMENT_SHADER)
+	gl.ShaderSource(frag_shader, 1, &frag_src, nil)
+	gl.CompileShader(frag_shader)
+
+	shader_program = gl.CreateProgram()
+
+	gl.AttachShader(shader_program, vertex_shader)
+	gl.AttachShader(shader_program, frag_shader)
+	gl.LinkProgram(shader_program)
+
+	vertices := [?]f32{-0.5, -0.5, 0, 0, -0.5, 0.5, 0, 0, 0.5, -0.5, 0, 0, 0.5, 0.5, 0, 0}
+	indicies := [?]u32{0, 1, 2, 1, 3, 2}
+
+	// vertex array
+	gl.GenVertexArrays(1, &VAO)
+
+	// vertex buffer
+	gl.GenBuffers(1, &VBO)
+
+	// element buffer
+	gl.GenBuffers(1, &EBO)
+
+	// bind
+	gl.BindVertexArray(VAO)
+
+	// copy vertices for opengl to use
+	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), rawptr(&vertices), gl.STATIC_DRAW)
+
+	// bind elements
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(indicies), rawptr(&indicies), gl.STATIC_DRAW)
+
+	// vertex attributes
+
+	// position
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 4 * size_of(f32), 0)
+	gl.EnableVertexAttribArray(0)
+
+}
+
+destroy_shaders :: proc() {
+
+	gl.DeleteProgram(shader_program)
+	gl.DeleteShader(vertex_shader)
+	gl.DeleteShader(frag_shader)
 }
