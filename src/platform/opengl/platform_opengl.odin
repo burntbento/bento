@@ -79,6 +79,7 @@ begin_frame :: proc() {}
 
 end_frame :: proc() {
 	sdl.GL_SwapWindow(window)
+	gl.Flush()
 }
 
 shutdown :: proc() {
@@ -147,8 +148,18 @@ get_window_size :: proc() -> (int, int) {
 	return int(w), int(h)
 }
 
+// get_render_size returns the pixels size of the renderer context
+// note: should be the same as sdl.GetWindowSizeInPixels
 get_render_size :: proc() -> (int, int) {
-	return 0, 0
+	w, h: i32
+	if !sdl.GetWindowSizeInPixels(window, &w, &h) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"failed to get renderer size %s",
+			sdl.GetError(),
+		)
+	}
+	return int(w), int(h)
 }
 
 // drawing
@@ -159,6 +170,9 @@ clear_screen :: proc(color: engine.Color) {
 }
 
 draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
+	// just in case, i had w, h = 0 and i thought i was going crazy
+	engine.assert_rect(rect)
+
 	gl_color := engine_color_to_gl_color(color)
 	v_color := gl.GetUniformLocation(shader_program, "vColor")
 	if v_color == -1 {
@@ -185,7 +199,6 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	gl.BindVertexArray(VAO)
 	defer gl.BindVertexArray(0)
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
-
 }
 
 draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {}
