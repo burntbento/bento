@@ -17,6 +17,8 @@ speed :: 300 // movement speed
 
 // -- Main Loop -- //
 
+cam: ^engine.Camera2D
+
 main :: proc() {
 	// main proc, set game function pointers
 	platform_config := engine.PlatformConfig {
@@ -64,9 +66,13 @@ init :: proc(platform: ^engine.Platform) {
 		rect_width,
 		rect_width,
 	)
+
+	cam = engine.camera_init(0, 0, 400, 300, 0, 0.5)
 }
 
 update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
+
+	engine.camera_update(cam, engine.vector2(rect.x, rect.y), dt)
 
 	if engine.input_state(input, engine.InputType.INPUT_KEY_RIGHT) > 0 {
 		rect.x += speed * dt
@@ -95,18 +101,20 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	// flush screen with a blank color
 	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
 
+	engine.camera_attach(state.cmdbuf, cam)
+
 	// draw red rectangle
 	engine.cmd_draw_rect(state.cmdbuf, rect, engine.RED)
-	engine.cmd_draw_rect_line(
-		state.cmdbuf,
-		engine.rect(rect.x + rect.width, rect.y, rect.width, rect.height),
-		engine.MAGENTA,
-	)
+
+	engine.camera_detach(state.cmdbuf)
 
 	return state.cmdbuf
 }
 
 shutdown :: proc() {
+
+	// free camera
+	engine.camera_destroy(cam)
 
 	// free state
 	engine.game_state_destroy(state)

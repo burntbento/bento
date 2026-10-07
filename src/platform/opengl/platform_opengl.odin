@@ -21,6 +21,9 @@ gl_context: sdl.GLContext
 
 platform_storage: ^sdl.Storage
 
+w: int
+h: int
+
 // audio
 audio_device: sdl.AudioDeviceID
 MAX_CONCURRENT_AUDIO_STREAMS :: 32
@@ -30,6 +33,9 @@ stream_count := 0 // current stream count, could also migrate to dynamic array
 // -- Input -- //
 gamepad: ^sdl.Gamepad
 DEADZONE: f64
+
+// -- Camera -- //
+camera_2d: ^engine.Camera2D
 
 // -- Shaders -- //
 triangle_vert_src := #load("../../../shaders/triangle.vert.glsl")
@@ -63,7 +69,7 @@ init :: proc(config: engine.PlatformConfig) {
 		platform_config.title,
 		platform_config.window_width,
 		platform_config.window_height,
-		{.OPENGL},
+		{.OPENGL, .HIGH_PIXEL_DENSITY},
 	)
 	if window == nil {
 		panic("Failed to open GLFW window")
@@ -106,6 +112,7 @@ init :: proc(config: engine.PlatformConfig) {
 		panic("initialisation error: failed to open audio device")
 	}
 
+	w, h = get_window_size()
 }
 
 begin_frame :: proc() {}
@@ -265,9 +272,20 @@ clear_screen :: proc(color: engine.Color) {
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 }
 
+@(private)
+camera_translation_position :: proc(x, y, scale: f64) -> (f64, f64, f64) {
+	if camera_2d == nil do return x, y, scale
+	pos := engine.camera_world_to_screen(camera_2d, engine.vector2(x, y))
+	// NOTE: position needs to be rounded to nearest int otherwise
+	// we have sub pixel rendering of textures -> little gaps/flashing
+	return math.round(pos.x), math.round(pos.y), camera_2d.zoom * scale
+}
+
 draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	// just in case, i had w, h = 0 and i thought i was going crazy
 	engine.assert_rect(rect)
+
+	t_x, t_y, t_s := camera_translation_position(rect.x, rect.y, 1)
 
 	vertices = {1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0}
 	indicies = {0, 1, 3, 1, 2, 3}
@@ -284,9 +302,9 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	v_translation := gl.GetUniformLocation(shader_program, "v_translation")
 	v_scale := gl.GetUniformLocation(shader_program, "v_scale")
 
-	projection := glm.mat4Ortho3d(0, 800, 600, 0, -1, 1)
-	translate := glm.mat4Translate({f32(rect.x), f32(rect.y), 0})
-	scale := glm.mat4Scale({f32(rect.width), f32(rect.height), 1})
+	projection := glm.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
+	translate := glm.mat4Translate({f32(t_x), f32(t_y), 0})
+	scale := glm.mat4Scale({f32(rect.width * t_s), f32(rect.height * t_s), 1})
 
 	gl.UseProgram(shader_program)
 
@@ -306,6 +324,8 @@ draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 	// just in case, i had w, h = 0 and i thought i was going crazy
 	engine.assert_rect(rect)
 
+	t_x, t_y, t_s := camera_translation_position(rect.x, rect.y, 1)
+
 	vertices = {1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0}
 	indicies = {0, 1, 2, 3, 0, 0}
 	shader_bind_verticies(VBO, EBO, 3, 3)
@@ -316,14 +336,13 @@ draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 		// log
 		return
 	}
-
 	v_proj := gl.GetUniformLocation(shader_program, "v_proj")
 	v_translation := gl.GetUniformLocation(shader_program, "v_translation")
 	v_scale := gl.GetUniformLocation(shader_program, "v_scale")
 
-	projection := glm.mat4Ortho3d(0, 800, 600, 0, -1, 1)
-	translate := glm.mat4Translate({f32(rect.x), f32(rect.y), 0})
-	scale := glm.mat4Scale({f32(rect.width), f32(rect.height), 1})
+	projection := glm.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
+	translate := glm.mat4Translate({f32(t_x), f32(t_y), 0})
+	scale := glm.mat4Scale({f32(rect.width * t_s), f32(rect.height * t_s), 1})
 
 	gl.UseProgram(shader_program)
 
@@ -362,9 +381,14 @@ set_clip_rect :: proc(rect: engine.Rect) {}
 
 end_clip_rect :: proc() {}
 
-attach_camera :: proc(cam: ^engine.Camera2D) {}
+attach_camera :: proc(cam: ^engine.Camera2D) {
+	camera_2d = cam
+}
 
-detach_camera :: proc() {}
+detach_camera :: proc() {
+	camera_2d = nil
+}
+
 
 // text
 destroy_all_fonts :: proc() {}
