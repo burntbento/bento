@@ -112,6 +112,9 @@ init :: proc(config: engine.PlatformConfig) {
 		panic("initialisation error: failed to open audio device")
 	}
 
+	// textures
+	init_textures()
+
 	w, h = get_window_size()
 }
 
@@ -124,6 +127,7 @@ end_frame :: proc() {
 
 shutdown :: proc() {
 
+
 	// destroy platform stuff
 	platform_config_destroy(platform_config)
 
@@ -135,6 +139,9 @@ shutdown :: proc() {
 
 	// shader
 	destroy_all_shaders()
+
+	// textures
+	destroy_all_textures()
 
 	// destroy sdl window
 	sdl.DestroyWindow(window)
@@ -226,7 +233,31 @@ platform_storage_destroy_writer :: proc() {}
 
 // textures / canvas
 create_texture :: proc(width, height, channels, bpp: int, data: ^u32) -> int {
-	return -1
+
+	tex: u32
+	gl.GenTextures(1, &tex)
+	gl.BindTexture(gl.TEXTURE_2D, tex)
+
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+
+	gl.TexImage2D(
+		gl.TEXTURE_2D,
+		0,
+		gl.RGBA,
+		i32(width),
+		i32(height),
+		0,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		data,
+	)
+	gl.GenerateMipmap(gl.TEXTURE_2D)
+
+	append(&Textures, tex)
+	return len(Textures) - 1
 }
 
 create_placeholder_texture :: proc() {}
@@ -243,7 +274,6 @@ push_canvas :: proc(canvas: int) {}
 
 pop_canvas :: proc() {}
 
-destroy_all_textures :: proc() {}
 
 get_window_size :: proc() -> (int, int) {
 	w, h: i32
@@ -375,7 +405,48 @@ draw_sprite :: proc(
 	color: engine.Color,
 	flip_x, flip_y: bool,
 	stretch_x, stretch_y: int,
-) {}
+) {
+	handle := Textures[texture_handle]
+
+	t_x, t_y, t_s := camera_translation_position(position.x, position.y, 1)
+
+	vertices = {1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0}
+	indicies = {0, 1, 3, 1, 2, 3}
+	shader_bind_verticies(VBO, EBO, 3, 3)
+
+	gl_color := engine_color_to_gl_color(color)
+	v_color := gl.GetUniformLocation(shader_program, "vColor")
+	if v_color == -1 {
+		// log
+		return
+	}
+
+	v_proj := gl.GetUniformLocation(shader_program, "v_proj")
+	v_translation := gl.GetUniformLocation(shader_program, "v_translation")
+	v_scale := gl.GetUniformLocation(shader_program, "v_scale")
+
+	projection := glm.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
+	translate := glm.mat4Translate({f32(t_x), f32(t_y), 0})
+	scale := glm.mat4Scale({f32(texture_rect.width * t_s), f32(texture_rect.height * t_s), 1})
+
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.BindTexture(gl.TEXTURE_2D, handle)
+
+	gl.UseProgram(shader_program)
+
+	gl.Uniform4f(v_color, gl_color.r, gl_color.g, gl_color.b, gl_color.a)
+
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
+
+	gl.UniformMatrix4fv(v_proj, 1, gl.FALSE, &projection[0][0])
+	gl.UniformMatrix4fv(v_translation, 1, gl.FALSE, &translate[0][0])
+	gl.UniformMatrix4fv(v_scale, 1, gl.FALSE, &scale[0][0])
+
+	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+	gl.BindVertexArray(0)
+
+
+}
 
 set_clip_rect :: proc(rect: engine.Rect) {}
 
@@ -883,6 +954,8 @@ frag_shader: u32
 vertices: [12]f32
 indicies: [6]u32
 
+gl_texture: u32
+
 VAO, VBO, EBO: u32
 
 @(private)
@@ -914,6 +987,9 @@ init_shaders :: proc() {
 
 	// element buffer
 	gl.GenBuffers(1, &EBO)
+
+	// texture
+	gl.GenTextures(1, &gl_texture)
 }
 
 shader_bind_verticies :: proc(vbo: u32, ebo: u32, size: int, stride: int) {
@@ -941,6 +1017,7 @@ destroy_all_shaders :: proc() {
 	gl.DeleteBuffers(1, &VBO)
 	gl.DeleteBuffers(1, &EBO)
 	gl.DeleteVertexArrays(1, &VAO)
+	gl.DeleteTextures(1, &gl_texture)
 
 	gl.DeleteProgram(shader_program)
 	gl.DeleteShader(vertex_shader)
