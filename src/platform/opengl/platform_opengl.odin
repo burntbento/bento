@@ -19,6 +19,14 @@ window: ^sdl.Window
 platform_config: ^PlatformConfig
 gl_context: sdl.GLContext
 
+platform_storage: ^sdl.Storage
+
+// audio
+audio_device: sdl.AudioDeviceID
+MAX_CONCURRENT_AUDIO_STREAMS :: 32
+streams: [MAX_CONCURRENT_AUDIO_STREAMS]^sdl.AudioStream // array of audio streams
+stream_count := 0 // current stream count, could also migrate to dynamic array
+
 // -- Input -- //
 gamepad: ^sdl.Gamepad
 DEADZONE: f64
@@ -36,7 +44,7 @@ init :: proc(config: engine.PlatformConfig) {
 	sdl.SetLogPriorities(.VERBOSE)
 
 	// init glfw
-	if !sdl.Init(sdl.INIT_VIDEO) {
+	if !sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO | sdl.INIT_GAMEPAD) {
 		sdl.LogError(
 			cast(i32)sdl.LogCategory.CUSTOM,
 			"SDL could not be initialised: %s",
@@ -61,6 +69,16 @@ init :: proc(config: engine.PlatformConfig) {
 		panic("Failed to open GLFW window")
 	}
 
+
+	// blocks until window is set
+	if !sdl.SyncWindow(window) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL failed to sync window: %s",
+			sdl.GetError(),
+		)
+	}
+
 	// create context
 	gl_context = sdl.GL_CreateContext(window)
 	sdl.GL_MakeCurrent(window, gl_context)
@@ -73,6 +91,21 @@ init :: proc(config: engine.PlatformConfig) {
 
 	// init shaders
 	init_shaders()
+
+	// storage
+	platform_storage_init()
+
+	// audio
+	audio_device = sdl.OpenAudioDevice(sdl.AUDIO_DEVICE_DEFAULT_PLAYBACK, nil)
+	if (audio_device == 0) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"Title storage could not be opened: %s",
+			sdl.GetError(),
+		)
+		panic("initialisation error: failed to open audio device")
+	}
+
 }
 
 begin_frame :: proc() {}
@@ -87,8 +120,20 @@ shutdown :: proc() {
 	// destroy platform stuff
 	platform_config_destroy(platform_config)
 
-	// destroy glfw
+	// storage
+	platform_storage_destroy()
+
+	// sound
+	destroy_all_sounds()
+
+	// shader
+	destroy_all_shaders()
+
+	// destroy sdl window
 	sdl.DestroyWindow(window)
+
+	// audio
+	sdl.CloseAudioDevice(audio_device)
 
 	// destroy gl context
 	sdl.GL_DestroyContext(gl_context)
@@ -99,21 +144,72 @@ shutdown :: proc() {
 
 // files io
 get_file_size :: proc(path: cstring) -> int {
-	return 0
+	outSize: u64
+	if (!sdl.GetStorageFileSize(platform_storage, path, &outSize)) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"failed to get file size: %s",
+			sdl.GetError(),
+		)
+		return 0
+	}
+	return cast(int)outSize
 }
 
 load_file :: proc(path: cstring, buffer: rawptr, size: int) -> bool {
-	return false
+	if (!sdl.ReadStorageFile(platform_storage, path, buffer, cast(u64)size)) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"failed to read file at %s: %s",
+			path,
+			sdl.GetError(),
+		)
+		return false
+	}
+	return true
 }
 
 write_file :: proc(path: string, buffer: rawptr, size: int, storage: engine.Storage) -> bool {
-	return false
+	cpath := strings.clone_to_cstring(path, context.temp_allocator)
+
+	// open and close writer
+	ok := platform_storage_init_writer(storage)
+	if !ok do return false
+	defer platform_storage_destroy_writer()
+
+	if !sdl.WriteStorageFile(platform_storage, cpath, buffer, cast(u64)size) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"failed to write file at %s: %s",
+			cpath,
+			sdl.GetError(),
+		)
+		return false
+	}
+	return true
 }
 
 // storage
-platform_storage_init :: proc() {}
+platform_storage_init :: proc() {
 
-platform_storage_destroy :: proc() {}
+	platform_storage = sdl.OpenTitleStorage(nil, 0)
+	if (platform_storage == nil) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"Title storage could not be opened: %s",
+			sdl.GetError(),
+		)
+		panic("initialisation error: failed to open title storage")
+	}
+	for !sdl.StorageReady(platform_storage) do sdl.Delay(1)
+}
+
+platform_storage_destroy :: proc() {
+	ok := sdl.CloseStorage(platform_storage)
+	if (!ok) {
+		sdl.LogError(cast(i32)sdl.LogCategory.CUSTOM, "failed to close storage %s", sdl.GetError())
+	}
+}
 
 platform_storage_init_writer :: proc(storage: engine.Storage) -> bool {
 	return false
@@ -254,12 +350,15 @@ get_text_input_buffer :: proc() -> ([64]u8, int) {
 }
 
 // shaders
+// deprecated
 shader_create_info :: proc(shader_create_info: engine.ShaderCreateInfo) -> int {
 	return -1
 }
 
+// deprecated
 destroy_all_shaders :: proc() {}
 
+// deprecated
 set_gpu_fragment_shader_uniforms :: proc(
 	shader: int,
 	slot: u32,
@@ -267,12 +366,19 @@ set_gpu_fragment_shader_uniforms :: proc(
 	uniform_length: u32,
 ) {}
 
+// deprecated
 push_shader_state :: proc(shader: int) {}
 
+// deprecated
 pop_shader_state :: proc() {}
 
 // audio
-destroy_all_sounds :: proc() {}
+destroy_all_sounds :: proc() {
+	for s in 0 ..< stream_count {
+		sdl.DestroyAudioStream(streams[s])
+	}
+	stream_count = 0
+}
 
 load_sound :: proc(
 	data: ^u8,
@@ -281,27 +387,156 @@ load_sound :: proc(
 	out_buffer: ^[^]u8,
 	out_length: ^u32,
 ) -> bool {
-	return false
+	spec: sdl.AudioSpec
+	io: ^sdl.IOStream = sdl.IOFromMem(data, uint(length))
+	if (!sdl.LoadWAV_IO(io, true, &spec, out_buffer, out_length)) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL could not load wav data: %s",
+			sdl.GetError(),
+		)
+		return false
+	}
+
+	format^ = int(spec.format)
+	channels^ = int(spec.channels)
+	freq^ = int(spec.freq)
+
+	return true
 }
 
 play_sound :: proc(format, channels, freq: int, data: ^u8, length: int, volume: f64) -> int {
-	return -1
+	spec: sdl.AudioSpec = {
+		format   = sdl.AudioFormat(format),
+		channels = i32(channels),
+		freq     = i32(freq),
+	}
+
+	free_stream: ^sdl.AudioStream
+	handle := -1
+
+	for i in 0 ..< stream_count {
+		stream := streams[i]
+		if (stream != nil && sdl.GetAudioStreamAvailable(stream) == 0) {
+			stream_spec: sdl.AudioSpec
+			sdl.GetAudioStreamFormat(stream, &stream_spec, nil)
+			if stream_spec == spec {
+				free_stream = stream
+				handle = i
+				break
+			}
+		}
+	}
+
+	new_stream: ^sdl.AudioStream
+	if free_stream != nil {
+		new_stream = free_stream
+	} else {
+		new_stream = create_and_bind_stream(&spec)
+		if new_stream == nil {
+			return -1
+		}
+
+		streams[stream_count] = new_stream
+		handle = stream_count
+		stream_count += 1
+	}
+	set_audio_stream(new_stream, data, length, volume)
+	return handle
+}
+
+@(private)
+set_audio_stream :: proc(stream: ^sdl.AudioStream, data: rawptr, length: int, volume: f64) {
+	if !sdl.SetAudioStreamGain(stream, f32(volume)) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL could not set audio stream grain: %s",
+			sdl.GetError(),
+		)
+	}
+	if !sdl.PutAudioStreamData(stream, data, i32(length)) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL could not put audio stream data: %s",
+			sdl.GetError(),
+		)
+	}
+}
+
+
+@(private)
+create_and_bind_stream :: proc(spec: ^sdl.AudioSpec) -> ^sdl.AudioStream {
+	if (stream_count >= MAX_CONCURRENT_AUDIO_STREAMS) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL could not play sound: all audio streams in use",
+		)
+		return nil
+	}
+
+	new_stream := sdl.CreateAudioStream(spec, nil)
+	if new_stream == nil {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL could not create new stream: %s",
+			sdl.GetError(),
+		)
+		return nil
+	}
+
+	if !sdl.BindAudioStream(audio_device, new_stream) {
+		sdl.LogError(
+			cast(i32)sdl.LogCategory.CUSTOM,
+			"SDL could not create new stream: %s",
+			sdl.GetError(),
+		)
+		return nil
+	}
+	return new_stream
+}
+
+
+@(private)
+get_stream_handle :: proc(handle: int) -> ^sdl.AudioStream {
+	if handle < 0 || handle > MAX_CONCURRENT_AUDIO_STREAMS - 1 do return nil
+	return streams[handle]
 }
 
 resume_sound :: proc(handle: int) -> bool {
-	return false
+	stream := get_stream_handle(handle)
+	if stream == nil {
+		return false
+	}
+	return sdl.ResumeAudioStreamDevice(stream)
 }
 
 pause_sound :: proc(handle: int) -> bool {
-	return false
+	stream := get_stream_handle(handle)
+	if stream == nil {
+		return false
+	}
+	return sdl.PauseAudioStreamDevice(stream)
 }
 
 set_sound_volume :: proc(handle: int, volume: f64) -> bool {
-	return false
+	stream := get_stream_handle(handle)
+	if stream == nil {
+		return false
+	}
+	return sdl.SetAudioStreamGain(stream, f32(volume))
 }
 
 is_sound_playing :: proc(handle: int) -> bool {
-	return false
+	if (handle < 0) {
+		return false
+	}
+
+	stream: ^sdl.AudioStream = streams[handle]
+	if (stream == nil) {
+		return false
+	}
+
+	return sdl.GetAudioStreamAvailable(stream) != 0
 }
 
 // input

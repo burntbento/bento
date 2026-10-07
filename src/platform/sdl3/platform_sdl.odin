@@ -1081,6 +1081,8 @@ shutdown :: proc() {
 	// destory fonts
 	destroy_all_fonts()
 
+	// destroy sounds
+	destroy_all_sounds()
 
 	// shutdown audio
 	sdl.CloseAudioDevice(audio_device)
@@ -1371,6 +1373,7 @@ get_stream_handle :: proc(handle: int) -> ^sdl.AudioStream {
 	if handle < 0 || handle > MAX_CONCURRENT_AUDIO_STREAMS - 1 do return nil
 	return streams[handle]
 }
+
 
 pause_sound :: proc(handle: int) -> bool {
 	stream := get_stream_handle(handle)
