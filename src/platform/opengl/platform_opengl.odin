@@ -269,6 +269,10 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	// just in case, i had w, h = 0 and i thought i was going crazy
 	engine.assert_rect(rect)
 
+	vertices = {1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0}
+	indicies = {0, 1, 3, 1, 2, 3}
+	shader_bind_verticies(VBO, EBO, 3, 3)
+
 	gl_color := engine_color_to_gl_color(color)
 	v_color := gl.GetUniformLocation(shader_program, "vColor")
 	if v_color == -1 {
@@ -288,16 +292,52 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 
 	gl.Uniform4f(v_color, gl_color.r, gl_color.g, gl_color.b, gl_color.a)
 
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
+
 	gl.UniformMatrix4fv(v_proj, 1, gl.FALSE, &projection[0][0])
 	gl.UniformMatrix4fv(v_translation, 1, gl.FALSE, &translate[0][0])
 	gl.UniformMatrix4fv(v_scale, 1, gl.FALSE, &scale[0][0])
 
-	gl.BindVertexArray(VAO)
-	defer gl.BindVertexArray(0)
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+	gl.BindVertexArray(0)
 }
 
-draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {}
+draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
+	// just in case, i had w, h = 0 and i thought i was going crazy
+	engine.assert_rect(rect)
+
+	vertices = {1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0}
+	indicies = {0, 1, 2, 3, 0, 0}
+	shader_bind_verticies(VBO, EBO, 3, 3)
+
+	gl_color := engine_color_to_gl_color(color)
+	v_color := gl.GetUniformLocation(shader_program, "vColor")
+	if v_color == -1 {
+		// log
+		return
+	}
+
+	v_proj := gl.GetUniformLocation(shader_program, "v_proj")
+	v_translation := gl.GetUniformLocation(shader_program, "v_translation")
+	v_scale := gl.GetUniformLocation(shader_program, "v_scale")
+
+	projection := glm.mat4Ortho3d(0, 800, 600, 0, -1, 1)
+	translate := glm.mat4Translate({f32(rect.x), f32(rect.y), 0})
+	scale := glm.mat4Scale({f32(rect.width), f32(rect.height), 1})
+
+	gl.UseProgram(shader_program)
+
+	gl.Uniform4f(v_color, gl_color.r, gl_color.g, gl_color.b, gl_color.a)
+
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+
+	gl.UniformMatrix4fv(v_proj, 1, gl.FALSE, &projection[0][0])
+	gl.UniformMatrix4fv(v_translation, 1, gl.FALSE, &translate[0][0])
+	gl.UniformMatrix4fv(v_scale, 1, gl.FALSE, &scale[0][0])
+
+	gl.DrawElements(gl.LINE_LOOP, 4, gl.UNSIGNED_INT, nil)
+	gl.BindVertexArray(0)
+}
 
 draw_circle :: proc(circle: engine.Circle, color: engine.Color) {}
 
@@ -354,9 +394,6 @@ get_text_input_buffer :: proc() -> ([64]u8, int) {
 shader_create_info :: proc(shader_create_info: engine.ShaderCreateInfo) -> int {
 	return -1
 }
-
-// deprecated
-destroy_all_shaders :: proc() {}
 
 // deprecated
 set_gpu_fragment_shader_uniforms :: proc(
@@ -819,6 +856,9 @@ shader_program: u32
 vertex_shader: u32
 frag_shader: u32
 
+vertices: [12]f32
+indicies: [6]u32
+
 VAO, VBO, EBO: u32
 
 @(private)
@@ -841,21 +881,6 @@ init_shaders :: proc() {
 	gl.AttachShader(shader_program, frag_shader)
 	gl.LinkProgram(shader_program)
 
-	vertices := [?]f32 {
-		1.0,
-		1.0,
-		0.0, // top right
-		1.0,
-		0.0,
-		0.0, // bottom right
-		0.0,
-		0.0,
-		0.0, // bottom left
-		0.0,
-		1.0,
-		0.0, // top left
-	}
-	indicies := [?]u32{0, 1, 3, 1, 2, 3}
 
 	// vertex array
 	gl.GenVertexArrays(1, &VAO)
@@ -865,27 +890,29 @@ init_shaders :: proc() {
 
 	// element buffer
 	gl.GenBuffers(1, &EBO)
+}
+
+shader_bind_verticies :: proc(vbo: u32, ebo: u32, size: int, stride: int) {
 
 	// bind
 	gl.BindVertexArray(VAO)
 
 	// copy vertices for opengl to use
-	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), rawptr(&vertices), gl.STATIC_DRAW)
 
 	// bind elements
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(indicies), rawptr(&indicies), gl.STATIC_DRAW)
 
 	// vertex attributes
 
 	// position
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), 0)
+	gl.VertexAttribPointer(0, i32(size), gl.FLOAT, gl.FALSE, i32(stride) * size_of(f32), 0)
 	gl.EnableVertexAttribArray(0)
-
 }
 
-destroy_shaders :: proc() {
+destroy_all_shaders :: proc() {
 
 	gl.DeleteBuffers(1, &VBO)
 	gl.DeleteBuffers(1, &EBO)

@@ -97,6 +97,12 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 
 	// draw red rectangle
 	engine.cmd_draw_rect(state.cmdbuf, rect, engine.RED)
+	engine.cmd_draw_rect_line(
+		state.cmdbuf,
+		engine.rect(rect.x + rect.width, rect.y, rect.width, rect.height),
+		engine.MAGENTA,
+	)
+
 	return state.cmdbuf
 }
 
