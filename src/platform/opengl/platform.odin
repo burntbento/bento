@@ -84,6 +84,8 @@ init :: proc(config: engine.PlatformConfig) {
 
 	// shaders
 	basic_shader_handle = load_shader_program(triangle_vert_src, triangle_frag_src)
+	texture_shader_handle = load_shader_program(textures_vert_src, textures_frag_src)
+
 
 	w, h = get_window_size()
 	logger(.DEBUG, "window size w: %d h:%d", w, h)

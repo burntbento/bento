@@ -23,6 +23,7 @@ create_texture :: proc(width, height, channels, bpp: int, data: ^u32) -> int {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 
+	gl.BindVertexArray(VAO_t)
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
 		0,
