@@ -5,6 +5,7 @@ import glm "core:math/linalg/glsl"
 import gl "vendor:OpenGL"
 import sdl "vendor:sdl3"
 
+
 set_renderer_draw_color :: proc(r, g, b, a: u8) -> bool {
 	return false
 }
@@ -38,6 +39,8 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	// just in case, i had w, h = 0 and i thought i was going crazy
 	engine.assert_rect(rect)
 
+	shader_program := get_shader(basic_shader_handle)
+
 	t_x, t_y, t_s := camera_translation_position(rect.x, rect.y, 1)
 
 	vertices = {1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0}
@@ -45,21 +48,21 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	shader_bind_verticies(VBO, EBO, 3, 3)
 
 	gl_color := engine_color_to_gl_color(color)
-	v_color := gl.GetUniformLocation(shader_program, "vColor")
+	v_color := gl.GetUniformLocation(shader_program.program, "vColor")
 	if v_color == -1 {
 		// log
 		return
 	}
 
-	v_proj := gl.GetUniformLocation(shader_program, "v_proj")
-	v_translation := gl.GetUniformLocation(shader_program, "v_translation")
-	v_scale := gl.GetUniformLocation(shader_program, "v_scale")
+	v_proj := gl.GetUniformLocation(shader_program.program, "v_proj")
+	v_translation := gl.GetUniformLocation(shader_program.program, "v_translation")
+	v_scale := gl.GetUniformLocation(shader_program.program, "v_scale")
 
 	projection := glm.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
 	translate := glm.mat4Translate({f32(t_x), f32(t_y), 0})
 	scale := glm.mat4Scale({f32(rect.width * t_s), f32(rect.height * t_s), 1})
 
-	gl.UseProgram(shader_program)
+	gl.UseProgram(shader_program.program)
 
 	gl.Uniform4f(v_color, gl_color.r, gl_color.g, gl_color.b, gl_color.a)
 
@@ -77,6 +80,8 @@ draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 	// just in case, i had w, h = 0 and i thought i was going crazy
 	engine.assert_rect(rect)
 
+	shader_program := get_shader(basic_shader_handle)
+
 	t_x, t_y, t_s := camera_translation_position(rect.x, rect.y, 1)
 
 	vertices = {1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0}
@@ -84,20 +89,20 @@ draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 	shader_bind_verticies(VBO, EBO, 3, 3)
 
 	gl_color := engine_color_to_gl_color(color)
-	v_color := gl.GetUniformLocation(shader_program, "vColor")
+	v_color := gl.GetUniformLocation(shader_program.program, "vColor")
 	if v_color == -1 {
 		// log
 		return
 	}
-	v_proj := gl.GetUniformLocation(shader_program, "v_proj")
-	v_translation := gl.GetUniformLocation(shader_program, "v_translation")
-	v_scale := gl.GetUniformLocation(shader_program, "v_scale")
+	v_proj := gl.GetUniformLocation(shader_program.program, "v_proj")
+	v_translation := gl.GetUniformLocation(shader_program.program, "v_translation")
+	v_scale := gl.GetUniformLocation(shader_program.program, "v_scale")
 
 	projection := glm.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
 	translate := glm.mat4Translate({f32(t_x), f32(t_y), 0})
 	scale := glm.mat4Scale({f32(rect.width * t_s), f32(rect.height * t_s), 1})
 
-	gl.UseProgram(shader_program)
+	gl.UseProgram(shader_program.program)
 
 	gl.Uniform4f(v_color, gl_color.r, gl_color.g, gl_color.b, gl_color.a)
 
@@ -131,6 +136,8 @@ draw_sprite :: proc(
 ) {
 	handle := Textures[texture_handle]
 
+	shader_program := get_shader(basic_shader_handle)
+
 	t_x, t_y, t_s := camera_translation_position(position.x, position.y, 1)
 
 	vertices = {1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0}
@@ -138,15 +145,15 @@ draw_sprite :: proc(
 	shader_bind_verticies(VBO, EBO, 3, 3)
 
 	gl_color := engine_color_to_gl_color(color)
-	v_color := gl.GetUniformLocation(shader_program, "vColor")
+	v_color := gl.GetUniformLocation(shader_program.program, "vColor")
 	if v_color == -1 {
 		// log
 		return
 	}
 
-	v_proj := gl.GetUniformLocation(shader_program, "v_proj")
-	v_translation := gl.GetUniformLocation(shader_program, "v_translation")
-	v_scale := gl.GetUniformLocation(shader_program, "v_scale")
+	v_proj := gl.GetUniformLocation(shader_program.program, "v_proj")
+	v_translation := gl.GetUniformLocation(shader_program.program, "v_translation")
+	v_scale := gl.GetUniformLocation(shader_program.program, "v_scale")
 
 	projection := glm.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
 	translate := glm.mat4Translate({f32(t_x), f32(t_y), 0})
@@ -155,7 +162,7 @@ draw_sprite :: proc(
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, handle)
 
-	gl.UseProgram(shader_program)
+	gl.UseProgram(shader_program.program)
 
 	gl.Uniform4f(v_color, gl_color.r, gl_color.g, gl_color.b, gl_color.a)
 

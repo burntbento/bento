@@ -82,6 +82,9 @@ init :: proc(config: engine.PlatformConfig) {
 	// textures
 	init_textures()
 
+	// shaders
+	basic_shader_handle = load_shader_program(triangle_vert_src, triangle_frag_src)
+
 	w, h = get_window_size()
 	logger(.DEBUG, "window size w: %d h:%d", w, h)
 	logger(.DEBUG, "platform opengl init complete...")
