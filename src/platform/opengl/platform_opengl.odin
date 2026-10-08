@@ -47,7 +47,7 @@ init :: proc(config: engine.PlatformConfig) {
 	platform_config = platform_config_new(config)
 
 	// INFO: set log verbosiity, turn off in production, should we write somewhere?
-	sdl.SetLogPriorities(.VERBOSE)
+	init_logger(.VERBOSE)
 
 	// init glfw
 	if !sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO | sdl.INIT_GAMEPAD) {
@@ -78,11 +78,7 @@ init :: proc(config: engine.PlatformConfig) {
 
 	// blocks until window is set
 	if !sdl.SyncWindow(window) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL failed to sync window: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL failed to sync window: %s", sdl.GetError())
 	}
 
 	// create context
@@ -104,11 +100,7 @@ init :: proc(config: engine.PlatformConfig) {
 	// audio
 	audio_device = sdl.OpenAudioDevice(sdl.AUDIO_DEVICE_DEFAULT_PLAYBACK, nil)
 	if (audio_device == 0) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"Title storage could not be opened: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "Title storage could not be opened: %s", sdl.GetError())
 		panic("initialisation error: failed to open audio device")
 	}
 
@@ -116,6 +108,8 @@ init :: proc(config: engine.PlatformConfig) {
 	init_textures()
 
 	w, h = get_window_size()
+	logger(.DEBUG, "window size w: %d h:%d", w, h)
+	logger(.DEBUG, "platform opengl init complete...")
 }
 
 begin_frame :: proc() {}
@@ -874,7 +868,6 @@ get_performance_counter :: proc() -> u64 {
 	return sdl.GetPerformanceCounter()
 }
 
-logger :: proc(msg: string, args: ..any) {}
 
 get_page_size :: proc() -> i32 {
 	return sdl.GetSystemPageSize()

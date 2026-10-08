@@ -103,7 +103,7 @@ Platform :: struct {
 	),
 
 	// logger
-	logger:                           proc(msg: string, args: ..any),
+	logger:                           proc(level: LoggerLevels, msg: string, args: ..any),
 
 	// memory
 	free_mem:                         proc(mem: rawptr),

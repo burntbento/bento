@@ -1536,10 +1536,32 @@ camera_translation_position :: proc(x, y, scale: f64) -> (f64, f64, f64) {
    Platform Logger
 */
 
+@(private)
+priorities_to_sdl :: proc(level: engine.LoggerLevels) -> sdl.LogPriority {
+	#partial switch level {
+	case .TRACE:
+		return sdl.LogPriority.TRACE
+	case .VERBOSE:
+		return sdl.LogPriority.VERBOSE
+	case .DEBUG:
+		return sdl.LogPriority.DEBUG
+	case .INFO:
+		return sdl.LogPriority.INFO
+	case .WARN:
+		return sdl.LogPriority.WARN
+	case .ERROR:
+		return sdl.LogPriority.ERROR
+	case .CRITICAL:
+		return sdl.LogPriority.CRITICAL
+	case:
+		return sdl.LogPriority.INVALID
+	}
+}
+
 // for now lets do a simple logger, just debug level
-logger :: proc(msg: string, args: ..any) {
+logger :: proc(level: engine.LoggerLevels, msg: string, args: ..any) {
 	cmessage := fmt.ctprintf(msg, ..args)
-	sdl.LogDebug(cast(i32)sdl.LogCategory.CUSTOM, cmessage)
+	sdl.LogMessage(cast(i32)sdl.LogCategory.CUSTOM, priorities_to_sdl(level), cmessage)
 }
 
 // text input

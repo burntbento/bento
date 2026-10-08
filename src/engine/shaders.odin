@@ -70,7 +70,7 @@ shader_create :: proc(name: string, info: ShaderCreateInfo, state: ^GameState) -
 
 	handle := state.platform.shader_create_info(info)
 	if handle == -1 {
-		state.platform.logger("Failed to create shader")
+		state.platform.logger(.DEBUG, "Failed to create shader")
 		return -1, VALUE_ERROR{message = "Not found"}
 	}
 
