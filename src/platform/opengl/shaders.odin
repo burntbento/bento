@@ -114,45 +114,70 @@ init_shaders :: proc() {
 	// bind
 	gl.BindVertexArray(VAO_t)
 
+	// set vertices
 	verticies_t := [?]f32 {
+		0.5,
+		0.5,
+		0.0,
+		1.0,
+		0.0,
+		0.0,
+		1.0,
+		1.0, // top right
+		0.5,
+		-0.5,
+		0.0,
+		0.0,
+		1.0,
+		0.0,
+		1.0,
+		0.0, // bottom right
 		-0.5,
 		-0.5,
 		0.0,
 		0.0,
-		0.5,
-		-0.5,
+		0.0,
 		1.0,
 		0.0,
-		0.5,
-		0.5,
-		1.0,
-		1.0,
-		0.5,
-		0.5,
-		1.0,
-		1.0,
+		0.0, // bottom let
 		-0.5,
 		0.5,
 		0.0,
 		1.0,
-		-0.5,
-		-0.5,
+		1.0,
 		0.0,
 		0.0,
+		1.0, // top let
 	}
+
+	indicies_t := [?]u32{0, 1, 3, 1, 2, 3}
 
 	// copy vertices for opengl to use
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_t)
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(verticies_t), rawptr(&verticies_t), gl.STATIC_DRAW)
 
+	// bind elements
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
+	gl.BufferData(
+		gl.ELEMENT_ARRAY_BUFFER,
+		size_of(indicies_t),
+		rawptr(&indicies_t),
+		gl.STATIC_DRAW,
+	)
+
 	// vertex attributes
 
 	// position
-	gl.VertexAttribPointer(0, 2, gl.FLOAT, gl.FALSE, 4 * size_of(f32), 0)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 0)
 	gl.EnableVertexAttribArray(0)
 
-	gl.VertexAttribPointer(1, 2, gl.FLOAT, gl.FALSE, 4 * size_of(f32), 2 * size_of(f32))
+	// color
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 3 * size_of(f32))
 	gl.EnableVertexAttribArray(1)
+
+	// texture
+	gl.VertexAttribPointer(2, 2, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 6 * size_of(f32))
+	gl.EnableVertexAttribArray(2)
 
 }
 

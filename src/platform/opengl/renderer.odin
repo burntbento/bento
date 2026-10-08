@@ -134,11 +134,12 @@ draw_sprite :: proc(
 	flip_x, flip_y: bool,
 	stretch_x, stretch_y: int,
 ) {
+
 	handle := Textures[texture_handle]
 
 	shader_program := get_shader(texture_shader_handle)
 
-	// t_x, t_y, t_s := camera_translation_position(position.x, position.y, 1)
+	t_x, t_y, t_s := camera_translation_position(position.x, position.y, scale)
 
 	// gl_color := engine_color_to_gl_color(color)
 	// v_color := gl.GetUniformLocation(shader_program.program, "vColor")
@@ -146,30 +147,35 @@ draw_sprite :: proc(
 	// 	// log
 	// 	return
 	// }
-	//
-	// v_proj := gl.GetUniformLocation(shader_program.program, "v_proj")
-	// v_translation := gl.GetUniformLocation(shader_program.program, "v_translation")
-	// v_scale := gl.GetUniformLocation(shader_program.program, "v_scale")
-	//
-	// projection := glm.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
-	// translate := glm.mat4Translate({f32(t_x), f32(t_y), 0})
-	// scale := glm.mat4Scale({f32(texture_rect.width * t_s), f32(texture_rect.height * t_s), 1})
+
+	v_proj := gl.GetUniformLocation(shader_program.program, "v_proj")
+	v_translation := gl.GetUniformLocation(shader_program.program, "v_translation")
+	v_scale := gl.GetUniformLocation(shader_program.program, "v_scale")
+
+	projection := glm.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
+	translate := glm.mat4Translate({f32(t_x), f32(t_y), 0})
+	scale := glm.mat4Scale({f32(texture_rect.width * t_s), f32(texture_rect.height * t_s), 1})
 
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, handle)
 
 	gl.UseProgram(shader_program.program)
+	location := gl.GetUniformLocation(shader_program.program, "texture1")
+	ensure(location != -1)
+	gl.Uniform1i(location, 0)
 
-	gl.Uniform1i(gl.GetUniformLocation(shader_program.program, "ourTexture"), 0)
 
 	// gl.Uniform4f(v_color, gl_color.r, gl_color.g, gl_color.b, gl_color.a)
 
-	// gl.UniformMatrix4fv(v_proj, 1, gl.FALSE, &projection[0][0])
-	// gl.UniformMatrix4fv(v_translation, 1, gl.FALSE, &translate[0][0])
-	// gl.UniformMatrix4fv(v_scale, 1, gl.FALSE, &scale[0][0])
+	gl.UniformMatrix4fv(v_proj, 1, gl.FALSE, &projection[0][0])
+	gl.UniformMatrix4fv(v_translation, 1, gl.FALSE, &translate[0][0])
+	gl.UniformMatrix4fv(v_scale, 1, gl.FALSE, &scale[0][0])
+
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
 	// gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
-	gl.BindVertexArray(VAO)
+	gl.BindVertexArray(VAO_t)
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
 	gl.BindVertexArray(0)
 
