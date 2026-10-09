@@ -160,15 +160,14 @@ draw_sprite :: proc(
 	scale := glm.mat4Scale({f32(texture_rect.width * t_s), f32(texture_rect.height * t_s), 1})
 
 
-	w, h := 64 * 4, 64 * 6
-	u0 := f32(texture_rect.x / f64(w))
-	v0 := f32(texture_rect.y / f64(h))
-	u1 := f32((texture_rect.x + texture_rect.width) / f64(w))
-	v1 := f32((texture_rect.y + texture_rect.height) / f64(h))
+	u0 := f32(texture_rect.x / f64(handle.width))
+	v0 := f32(texture_rect.y / f64(handle.height))
+	u1 := f32((texture_rect.x + texture_rect.width) / f64(handle.width))
+	v1 := f32((texture_rect.y + texture_rect.height) / f64(handle.height))
 
 
 	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, handle)
+	gl.BindTexture(gl.TEXTURE_2D, handle.tex)
 
 
 	gl.UseProgram(shader_program.program)

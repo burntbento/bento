@@ -3,10 +3,16 @@ package platform_opengl
 import gl "vendor:OpenGL"
 
 @(private)
-Textures: [dynamic]u32
+Textures: [dynamic]^TextureData
+
+TextureData :: struct {
+	tex:    u32,
+	width:  int,
+	height: int,
+}
 
 init_textures :: proc() {
-	Textures = make([dynamic]u32)
+	Textures = make([dynamic]^TextureData)
 }
 
 create_placeholder_texture :: proc() {}
@@ -37,10 +43,18 @@ create_texture :: proc(width, height, channels, bpp: int, data: ^u32) -> int {
 	)
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 
-	append(&Textures, tex)
+	texture_data := new(TextureData)
+	texture_data.tex = tex
+	texture_data.width = width
+	texture_data.height = height
+
+	append(&Textures, texture_data)
 	return len(Textures) - 1
 }
 
 destroy_all_textures :: proc() {
+	for texture in Textures {
+		free(texture)
+	}
 	delete(Textures)
 }
