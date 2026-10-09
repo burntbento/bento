@@ -151,13 +151,24 @@ draw_sprite :: proc(
 	v_proj := gl.GetUniformLocation(shader_program.program, "v_proj")
 	v_translation := gl.GetUniformLocation(shader_program.program, "v_translation")
 	v_scale := gl.GetUniformLocation(shader_program.program, "v_scale")
+	uv_offset := gl.GetUniformLocation(shader_program.program, "uv_offset")
+	uv_scale := gl.GetUniformLocation(shader_program.program, "uv_scale")
 
 	projection := glm.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
-	translate := glm.mat4Translate({f32(t_x), f32(t_y), 0})
+	translate := glm.mat4Translate({f32(t_x + 32 * t_s), f32(t_y + 32 * t_s), 0})
 	scale := glm.mat4Scale({f32(texture_rect.width * t_s), f32(texture_rect.height * t_s), 1})
+
+
+	w, h := 64 * 4, 64 * 6
+	u0 := f32(texture_rect.x / f64(w))
+	v0 := f32(texture_rect.y / f64(h))
+	u1 := f32((texture_rect.x + texture_rect.width) / f64(w))
+	v1 := f32((texture_rect.y + texture_rect.height) / f64(h))
+
 
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, handle)
+
 
 	gl.UseProgram(shader_program.program)
 	location := gl.GetUniformLocation(shader_program.program, "texture1")
@@ -170,6 +181,9 @@ draw_sprite :: proc(
 	gl.UniformMatrix4fv(v_proj, 1, gl.FALSE, &projection[0][0])
 	gl.UniformMatrix4fv(v_translation, 1, gl.FALSE, &translate[0][0])
 	gl.UniformMatrix4fv(v_scale, 1, gl.FALSE, &scale[0][0])
+
+	gl.Uniform2f(uv_offset, u0, v0)
+	gl.Uniform2f(uv_scale, u1 - u0, v1 - v0)
 
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
