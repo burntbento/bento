@@ -148,16 +148,24 @@ draw_sprite :: proc(
 	// 	return
 	// }
 
+	flip_x_flag := 1 if !flip_x else -1
+	flip_y_flag := 1 if !flip_y else -1
+
 	v_proj := gl.GetUniformLocation(shader_program.program, "v_proj")
 	v_translation := gl.GetUniformLocation(shader_program.program, "v_translation")
 	v_scale := gl.GetUniformLocation(shader_program.program, "v_scale")
 	uv_offset := gl.GetUniformLocation(shader_program.program, "uv_offset")
 	uv_scale := gl.GetUniformLocation(shader_program.program, "uv_scale")
 
-	// NOTE: HARD CODED RN
 	projection := glm.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
-	translate := glm.mat4Translate({f32(t_x + 32 * t_s), f32(t_y + 32 * t_s), 0})
-	scale := glm.mat4Scale({f32(texture_rect.width * t_s), f32(texture_rect.height * t_s), 1})
+	translate := glm.mat4Translate({f32((t_x + 32 * t_s)), f32((t_y + 32 * t_s)), 0})
+	scale := glm.mat4Scale(
+		{
+			f32(texture_rect.width * t_s) * f32(flip_x_flag),
+			f32(texture_rect.height * t_s) * f32(flip_y_flag),
+			1,
+		},
+	)
 
 
 	u0 := f32(texture_rect.x / f64(handle.width))
