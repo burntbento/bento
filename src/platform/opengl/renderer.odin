@@ -158,7 +158,9 @@ draw_sprite :: proc(
 	uv_scale := gl.GetUniformLocation(shader_program.program, "uv_scale")
 
 	projection := glm.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
-	translate := glm.mat4Translate({f32((t_x + 32 * t_s)), f32((t_y + 32 * t_s)), 0})
+	translate := glm.mat4Translate(
+		{f32((t_x + f64(handle.width / 2) * t_s)), f32((t_y + f64(handle.height / 2) * t_s)), 0},
+	)
 	scale := glm.mat4Scale(
 		{
 			f32(texture_rect.width * t_s) * f32(flip_x_flag),
