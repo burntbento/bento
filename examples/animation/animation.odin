@@ -81,7 +81,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 
 
 	// flush screen with a blank color
-	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
+	engine.cmd_clear_screen(state.cmdbuf, engine.LAVENDER)
 
 	// postion centering the sprite based on scale
 	scale: f64 = 4

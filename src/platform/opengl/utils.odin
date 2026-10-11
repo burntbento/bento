@@ -12,10 +12,10 @@ GLColor :: struct {
 @(private)
 engine_color_to_gl_color :: #force_inline proc(color: engine.Color) -> GLColor {
 	return GLColor {
-		r = f32(color.r / 255),
-		g = f32(color.g / 255),
-		b = f32(color.b / 255),
-		a = f32(color.a / 255),
+		r = f32(color.r) / f32(255),
+		g = f32(color.g) / f32(255),
+		b = f32(color.b) / f32(255),
+		a = f32(color.a) / f32(255),
 	}
 }
 
