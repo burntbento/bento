@@ -3,6 +3,7 @@ package platform_opengl
 import "bento:engine"
 import gl "vendor:OpenGL"
 import sdl "vendor:sdl3"
+import "vendor:sdl3/ttf"
 
 // -- OPENGL Version -- //
 MAJOR :: 4
@@ -86,6 +87,16 @@ init :: proc(config: engine.PlatformConfig) {
 	basic_shader_handle = load_shader_program(triangle_vert_src, triangle_frag_src)
 	texture_shader_handle = load_shader_program(textures_vert_src, textures_frag_src)
 
+	// text engine
+	if !ttf.Init() {
+		panic("failed to init ttf")
+	}
+
+	text_engine = ttf.CreateSurfaceTextEngine()
+	if text_engine == nil {
+		panic("failed to initialise sdl ttf engine")
+	}
+
 
 	w, h = get_window_size()
 	logger(.DEBUG, "window size w: %d h:%d", w, h)
@@ -110,6 +121,15 @@ shutdown :: proc() {
 
 	// textures
 	destroy_all_textures()
+
+	// fonts
+	destroy_all_fonts()
+
+	// ttf
+	ttf.DestroySurfaceTextEngine(text_engine)
+
+	// quit ttf
+	ttf.Quit()
 
 	// destroy sdl window
 	sdl.DestroyWindow(window)
