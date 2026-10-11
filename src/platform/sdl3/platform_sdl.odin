@@ -671,7 +671,7 @@ draw_sprite :: proc(
 measure_text :: proc(font_handle: int, text: string) -> (width: int, height: int) {
 	if font_handle < 0 || font_handle >= len(fonts) do return 0, 0
 	w, h: c.int
-	if !ttf.GetStringSize(fonts[font_handle], cstring(raw_data(text)), len(text), &w, &h) {
+	if !ttf.GetStringSize(fonts[font_handle], raw_data(text), len(text), &w, &h) {
 		return 0, 0
 	}
 	return int(w), int(h)
@@ -681,12 +681,9 @@ draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, colo
 
 	trans_x, trans_y, _ := camera_translation_position(position.x, position.y, 1.0)
 
-	ctext := strings.clone_to_cstring(text)
-	defer delete(ctext)
-
 	font := fonts[font_handle]
 
-	text := ttf.CreateText(text_engine, font, ctext, 0)
+	text := ttf.CreateText(text_engine, font, raw_data(text), 0)
 	defer ttf.DestroyText(text)
 	ttf.SetTextColorFloat(
 		text,

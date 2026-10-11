@@ -216,7 +216,7 @@ destroy_all_shaders :: proc() {
 	// kill shaders
 	for shader in shaders {
 		if shader == nil do continue
-		gl.DeleteShader(shader.program)
+		gl.DeleteProgram(shader.program)
 		free(shader)
 	}
 }
