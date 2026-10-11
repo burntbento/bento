@@ -80,9 +80,6 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	engine.cmd_reset(state.cmdbuf)
 
 
-	// set rect width
-	rect_width := f64(screen_width) * 0.25
-
 	// flush screen with a blank color
 	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
 
