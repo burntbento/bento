@@ -151,6 +151,7 @@ draw_sprite :: proc(
 	flip_x_flag := 1 if !flip_x else -1
 	flip_y_flag := 1 if !flip_y else -1
 
+
 	v_proj := gl.GetUniformLocation(shader_program.program, "v_proj")
 	v_translation := gl.GetUniformLocation(shader_program.program, "v_translation")
 	v_scale := gl.GetUniformLocation(shader_program.program, "v_scale")
@@ -159,7 +160,11 @@ draw_sprite :: proc(
 
 	projection := glm.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
 	translate := glm.mat4Translate(
-		{f32((t_x + f64(handle.width / 2) * t_s)), f32((t_y + f64(handle.height / 2) * t_s)), 0},
+		{
+			f32((t_x + f64(texture_rect.width / 2) * t_s)),
+			f32((t_y + f64(texture_rect.height / 2) * t_s)),
+			0,
+		},
 	)
 	scale := glm.mat4Scale(
 		{
