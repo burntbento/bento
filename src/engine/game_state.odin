@@ -62,11 +62,11 @@ game_state_destroy :: proc(game_state: ^GameState) {
 
 	// destroy cmbuf
 	rendercommandbuffer_destroy(game_state.cmdbuf, allocator)
-	game_state.platform.logger("Destroyed render command buffer")
+	game_state.platform.logger(.DEBUG, "Destroyed render command buffer")
 
 	// destory asset cache
 	asset_cache_destroy(game_state.asset_cache)
-	game_state.platform.logger("Destroyed asset cache")
+	game_state.platform.logger(.DEBUG, "Destroyed asset cache")
 
 	free(game_state)
 }

@@ -2,7 +2,7 @@ package platform
 
 BACKEND :: #config(BACKEND, "sdl")
 
-@(require) import opengl_backend "bento:platform/opengl"
+// @(require) import opengl_backend "bento:platform/opengl"
 @(require) import sdl_backend "bento:platform/sdl_renderer"
 
 
