@@ -144,20 +144,18 @@ init :: proc(config: engine.PlatformConfig) {
 	platform_config = platform_config_new(config)
 
 	// INFO: set log verbosiity, turn off in production, should we write somewhere?
-	sdl.SetLogPriorities(.VERBOSE)
+
+	init_logger(.VERBOSE)
 
 	if (!sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO | sdl.INIT_GAMEPAD)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not be initialised: %s",
-			sdl.GetError(),
-		)
+		logger(.DEBUG, "SDL could not be initialised: %s", sdl.GetError())
 		panic("initialisation error: failed to initialise SDL")
 	}
 
 	// set window hints
 	sdl.GL_SetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, MAJOR)
 	sdl.GL_SetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, MINOR)
+	sdl.GL_SetAttribute(sdl.GL_CONTEXT_DEBUG_FLAG, true) // true for now
 	sdl.GL_SetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, i32(sdl.GL_CONTEXT_PROFILE_CORE))
 	sdl.GL_SetAttribute(sdl.GL_DOUBLEBUFFER, 1)
 
