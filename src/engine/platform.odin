@@ -1,6 +1,5 @@
 package engine
 
-
 ScaleMode :: enum {
 	NEAREST,
 	LINEAR,
@@ -20,6 +19,9 @@ PlatformConfig :: struct {
 	// storage
 	org:           string,
 	app:           string,
+
+	// logging
+	logging_level: LoggerLevels,
 }
 
 // Platform is a v table that is filled in the execute logic

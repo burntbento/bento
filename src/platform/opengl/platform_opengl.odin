@@ -67,6 +67,7 @@ PlatformConfig :: struct {
 	org:           cstring, // for storage api
 	app:           cstring, // for storage api
 	scale_mode:    sdl.ScaleMode,
+	logging_level: engine.LoggerLevels,
 	// allocator
 	_allocator:    mem.Allocator,
 }
@@ -112,6 +113,9 @@ platform_config_new :: proc(
 	// sdl flags
 	p_config.flags = flags
 
+	// logging level
+	p_config.logging_level = config.logging_level
+
 	// set scale mode
 	switch config.scale_mode {
 	case .LINEAR:
@@ -144,9 +148,7 @@ init :: proc(config: engine.PlatformConfig) {
 	// parse config
 	platform_config = platform_config_new(config)
 
-	// INFO: set log verbosiity, turn off in production, should we write somewhere?
-
-	init_logger(.VERBOSE)
+	init_logger(platform_config.logging_level)
 
 	if (!sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO | sdl.INIT_GAMEPAD)) {
 		logger(.ERROR, "SDL could not be initialised: %s", sdl.GetError())
@@ -189,6 +191,9 @@ init :: proc(config: engine.PlatformConfig) {
 
 	// load function pointers
 	gl.load_up_to(MAJOR, MINOR, sdl.gl_set_proc_address)
+	if err := gl.GetError(); err != 0 {
+		logger(.ERROR, "Failed to load function pointers, code: %d", err)
+	}
 
 	// vsync, should allow to customise later
 	sdl.GL_SetSwapInterval(1)
@@ -217,7 +222,9 @@ init :: proc(config: engine.PlatformConfig) {
 begin_frame :: proc() {}
 
 end_frame :: proc() {
-	sdl.GL_SwapWindow(window)
+	if !sdl.GL_SwapWindow(window) {
+		logger(.ERROR, "Failed to swap buffers")
+	}
 }
 
 get_page_size :: proc() -> i32 {
