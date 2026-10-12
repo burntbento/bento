@@ -6,6 +6,7 @@ import "core:fmt"
 import "core:math"
 import "core:mem"
 import "core:strings"
+import gl "vendor:OpenGL"
 import sdl "vendor:sdl3"
 import ttf "vendor:sdl3/ttf"
 
@@ -23,9 +24,9 @@ PlatformStorage :: struct {
 
 // -- OPENGL Version -- //
 MAJOR :: 4
-MINOR :: 6
+MINOR :: 1
 
-gl_context: ^sdl.GLContext
+gl_context: sdl.GLContext
 
 window: ^sdl.Window // sdl window
 
@@ -148,14 +149,13 @@ init :: proc(config: engine.PlatformConfig) {
 	init_logger(.VERBOSE)
 
 	if (!sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO | sdl.INIT_GAMEPAD)) {
-		logger(.DEBUG, "SDL could not be initialised: %s", sdl.GetError())
+		logger(.ERROR, "SDL could not be initialised: %s", sdl.GetError())
 		panic("initialisation error: failed to initialise SDL")
 	}
 
 	// set window hints
 	sdl.GL_SetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, MAJOR)
 	sdl.GL_SetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, MINOR)
-	sdl.GL_SetAttribute(sdl.GL_CONTEXT_DEBUG_FLAG, true) // true for now
 	sdl.GL_SetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, i32(sdl.GL_CONTEXT_PROFILE_CORE))
 	sdl.GL_SetAttribute(sdl.GL_DOUBLEBUFFER, 1)
 
@@ -166,106 +166,59 @@ init :: proc(config: engine.PlatformConfig) {
 		platform_config.flags,
 	)
 	if (window == nil) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not be initialised: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not be initialised: %s", sdl.GetError())
 		panic("initialisation error: failed to create window")
 	}
 
 	// blocks until window is set
 	if !sdl.SyncWindow(window) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL failed to sync window: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL failed to sync window: %s", sdl.GetError())
 	}
 
 	gl_context = sdl.GL_CreateContext(window)
+	if gl_context == nil {
+		logger(.ERROR, "SDL failed to create OpenGL Context")
+		panic("SDL failed to create OpenGL Context")
+	}
+	logger(.DEBUG, "SDL Created OpenGL Context")
 
-
-	// changed render backend to gpu, might want to change back to nil for default choosing
-	renderer = sdl.CreateRenderer(window, "gpu")
-	if (renderer == nil) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not be initialised: %s",
-			sdl.GetError(),
-		)
-		panic("initialisation error: failed to create renderer")
-
+	if !sdl.GL_MakeCurrent(window, gl_context) {
+		logger(.ERROR, "SDL failed to bind OpenGL Context to window: %s", sdl.GetError())
+		panic("SDL failed to bind OpenGL Context to window")
 	}
 
-	sdl.SetRenderVSync(renderer, 1)
+	// load function pointers
+	gl.load_up_to(MAJOR, MINOR, sdl.gl_set_proc_address)
 
-	// set gpu driver formats - vulkan, metal and dx11
-	// basically linux/other, mac and windows
-	formats = {.SPIRV, .MSL, .DXIL}
-	device = sdl.CreateGPUDevice(formats, true, nil)
-	if device == nil {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not be initialised: %s",
-			sdl.GetError(),
-		)
-		panic("initialisation error: failed to create gpu device")
-	}
+	// vsync, should allow to customise later
+	sdl.GL_SetSwapInterval(1)
 
-	formats = sdl.GetGPUShaderFormats(device)
-
-	sdl.LogDebug(
-		cast(i32)sdl.LogCategory.CUSTOM,
-		"Setting scale mode to %d",
-		platform_config.scale_mode,
-	)
-	if !sdl.SetDefaultTextureScaleMode(renderer, platform_config.scale_mode) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL failed to set texture mode to nearest: %s",
-			sdl.GetError(),
-		)
-	}
-
+	version := gl.GetString(gl.VERSION)
+	logger(.DEBUG, "OpenGL Version: %s", version)
 
 	// storage
 	platform_storage_init()
 
-	// textures
-	create_placeholder_texture()
-	textures = make([dynamic]^sdl.Texture, 0, 64)
-
-	w, h := get_window_size()
-	world_texture = create_canvas(w, h)
-
 	// audio
 	audio_device = sdl.OpenAudioDevice(sdl.AUDIO_DEVICE_DEFAULT_PLAYBACK, nil)
-	if (audio_device == 0) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"Title storage could not be opened: %s",
-			sdl.GetError(),
-		)
+	if audio_device == 0 {
+		logger(.ERROR, "Title storage could not be opened: %s", sdl.GetError())
 		panic("initialisation error: failed to open audio device")
 	}
 
 	// fonts
 	if !ttf.Init() {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"ttf failed to initialise: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "ttf failed to initialise: %s", sdl.GetError())
 	}
-	fonts = make([dynamic]^ttf.Font, 0, 64)
-	text_engine = ttf.CreateRendererTextEngine(renderer)
+	text_engine = ttf.CreateSurfaceTextEngine()
 
 }
 
 begin_frame :: proc() {}
 
-end_frame :: proc() {}
+end_frame :: proc() {
+	sdl.GL_SwapWindow(window)
+}
 
 get_page_size :: proc() -> i32 {
 	return sdl.GetSystemPageSize()
@@ -291,7 +244,11 @@ push_shader_state :: proc(shader: int) {}
 
 pop_shader_state :: proc() {}
 
-clear_screen :: proc(color: engine.Color) {}
+clear_screen :: proc(color: engine.Color) {
+	gl_color := engine_color_to_gl_color(color)
+	gl.ClearColor(gl_color.r, gl_color.g, gl_color.b, gl_color.a)
+	gl.Clear(gl.COLOR_BUFFER_BIT)
+}
 
 draw_circle :: proc(circle: engine.Circle, color: engine.Color) {}
 
@@ -357,11 +314,7 @@ get_performance_counter :: proc() -> u64 {
 get_file_size :: proc(path: cstring) -> int {
 	outSize: u64
 	if (!sdl.GetStorageFileSize(platform_storage.title, path, &outSize)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"failed to get file size: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "failed to get file size: %s", sdl.GetError())
 		return 0
 	}
 	return cast(int)outSize
@@ -370,12 +323,7 @@ get_file_size :: proc(path: cstring) -> int {
 // loads contents of the file into the user provided buffer
 load_file :: proc(path: cstring, buffer: rawptr, size: int) -> bool {
 	if (!sdl.ReadStorageFile(platform_storage.title, path, buffer, cast(u64)size)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"failed to read file at %s: %s",
-			path,
-			sdl.GetError(),
-		)
+		logger(.ERROR, "failed to read file at %s: %s", path, sdl.GetError())
 		return false
 	}
 	return true
@@ -390,12 +338,7 @@ write_file :: proc(path: string, buffer: rawptr, size: int, storage: engine.Stor
 	defer platform_storage_destroy_writer()
 
 	if !sdl.WriteStorageFile(platform_storage.writable, cpath, buffer, cast(u64)size) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"failed to write file at %s: %s",
-			cpath,
-			sdl.GetError(),
-		)
+		logger(.ERROR, "failed to write file at %s: %s", cpath, sdl.GetError())
 		return false
 	}
 	return true
@@ -427,7 +370,7 @@ destroy_all_fonts :: proc() {}
 
 shutdown :: proc() {
 
-	sdl.LogInfo(cast(i32)sdl.LogCategory.APPLICATION, "Shutting down...")
+	logger(.DEBUG, "Shutting down...")
 	if (gamepad != nil) {
 		sdl.CloseGamepad(gamepad)
 		gamepad = nil
@@ -444,7 +387,7 @@ shutdown :: proc() {
 	sdl.CloseAudioDevice(audio_device)
 
 	// shutdown fonts
-	ttf.DestroyRendererTextEngine(text_engine)
+	ttf.DestroySurfaceTextEngine(text_engine)
 	ttf.Quit()
 
 	// platform
@@ -452,8 +395,9 @@ shutdown :: proc() {
 	platform_config_destroy(platform_config)
 
 
-	sdl.DestroyGPUDevice(device)
-	sdl.DestroyRenderer(renderer)
+	// gl context
+	sdl.GL_DestroyContext(gl_context)
+
 	sdl.DestroyWindow(window)
 	sdl.Quit()
 }
@@ -462,11 +406,8 @@ shutdown :: proc() {
 get_window_size :: #force_inline proc() -> (int, int) {
 	w, h: i32
 	if (!sdl.GetWindowSizeInPixels(window, &w, &h)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"failed to get window size %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "failed to get window size %s", sdl.GetError())
+		return 0, 0
 	}
 	return int(w), int(h)
 }
@@ -578,19 +519,13 @@ update_input :: proc(input: ^engine.GameInput) {
 			if (gamepad == nil) {
 				gamepad = sdl.OpenGamepad(evt.gdevice.which)
 				if (gamepad == nil) {
-					sdl.LogError(
-						cast(i32)sdl.LogCategory.CUSTOM,
-						"SDL could not open gamepad: %s",
-						sdl.GetError(),
-					)
-
+					logger(.ERROR, "SDL could not open gamepad: %s", sdl.GetError())
 				}
 			}
 		} else if (evt.type == sdl.EventType.GAMEPAD_REMOVED) {
 			if (gamepad != nil && sdl.GetGamepadID(gamepad) == evt.gdevice.which) {
 				sdl.CloseGamepad(gamepad)
 				gamepad = nil
-
 			}
 
 		} else if (evt.type == sdl.EventType.GAMEPAD_BUTTON_DOWN ||
@@ -669,11 +604,7 @@ set_half_axis_state :: proc(
 gamepad_rumble :: proc(low_frequency_rumble: u16, high_frequency_rumble: u16, duration_ms: u32) {
 	if gamepad == nil do return
 	if !sdl.RumbleGamepad(gamepad, low_frequency_rumble, high_frequency_rumble, duration_ms) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL failed to rumble gamepad: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL failed to rumble gamepad: %s", sdl.GetError())
 	}
 }
 
@@ -689,11 +620,7 @@ load_sound :: proc(
 	spec: sdl.AudioSpec
 	io: ^sdl.IOStream = sdl.IOFromMem(data, uint(length))
 	if (!sdl.LoadWAV_IO(io, true, &spec, out_buffer, out_length)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not load wav data: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not load wav data: %s", sdl.GetError())
 		return false
 	}
 
@@ -748,29 +675,18 @@ set_sound_volume :: proc(handle: int, volume: f64) -> bool {
 @(private)
 create_and_bind_stream :: proc(spec: ^sdl.AudioSpec) -> ^sdl.AudioStream {
 	if (stream_count >= MAX_CONCURRENT_AUDIO_STREAMS) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not play sound: all audio streams in use",
-		)
+		logger(.ERROR, "SDL could not play sound: all audio streams in use")
 		return nil
 	}
 
 	new_stream := sdl.CreateAudioStream(spec, nil)
 	if new_stream == nil {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not create new stream: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not create new stream: %s", sdl.GetError())
 		return nil
 	}
 
 	if !sdl.BindAudioStream(audio_device, new_stream) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not create new stream: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not create new stream: %s", sdl.GetError())
 		return nil
 	}
 	return new_stream
@@ -779,18 +695,10 @@ create_and_bind_stream :: proc(spec: ^sdl.AudioSpec) -> ^sdl.AudioStream {
 // set existing audio stream
 set_audio_stream :: proc(stream: ^sdl.AudioStream, data: rawptr, length: int, volume: f64) {
 	if !sdl.SetAudioStreamGain(stream, f32(volume)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not set audio stream grain: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not set audio stream grain: %s", sdl.GetError())
 	}
 	if !sdl.PutAudioStreamData(stream, data, i32(length)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not put audio stream data: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not put audio stream data: %s", sdl.GetError())
 	}
 }
 
@@ -854,11 +762,8 @@ load_font :: proc(path: string, size: f32) -> int {
 	defer delete(cpath)
 	font := ttf.OpenFont(cpath, size)
 	if font == nil {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not load font: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not load font: %s", sdl.GetError())
+		return -1
 	}
 	append(&fonts, font)
 	return len(fonts) - 1
@@ -897,11 +802,7 @@ platform_storage_init :: proc() {
 	platform_storage = new(PlatformStorage, context.allocator)
 	platform_storage.title = sdl.OpenTitleStorage(nil, 0)
 	if (platform_storage.title == nil) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"Title storage could not be opened: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "Title storage could not be opened: %s", sdl.GetError())
 		panic("initialisation error: failed to open title storage")
 	}
 	for !sdl.StorageReady(platform_storage.title) do sdl.Delay(1)
@@ -910,8 +811,8 @@ platform_storage_init :: proc() {
 
 platform_storage_destroy :: proc() {
 	ok := sdl.CloseStorage(platform_storage.title)
-	if (!ok) {
-		sdl.LogError(cast(i32)sdl.LogCategory.CUSTOM, "failed to close storage %s", sdl.GetError())
+	if !ok {
+		logger(.ERROR, "failed to close storage %s", sdl.GetError())
 	}
 	platform_storage_destroy_writer()
 	free(platform_storage)
@@ -933,11 +834,7 @@ platform_storage_init_writer :: proc(storage: engine.Storage) -> bool {
 		)
 	}
 	if (platform_storage.writable == nil) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"Writing storage could not be opened: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "Writing storage could not be opened: %s", sdl.GetError())
 		return false
 	}
 	for !sdl.StorageReady(platform_storage.writable) do sdl.Delay(1)
@@ -948,7 +845,7 @@ platform_storage_destroy_writer :: proc() {
 	if platform_storage.writable == nil do return
 	ok2 := sdl.CloseStorage(platform_storage.writable)
 	if (!ok2) {
-		sdl.LogError(cast(i32)sdl.LogCategory.CUSTOM, "failed to close storage %s", sdl.GetError())
+		logger(.ERROR, "failed to close storage %s", sdl.GetError())
 	}
 	platform_storage.writable = nil
 }
@@ -982,4 +879,19 @@ init_logger :: proc(level: engine.LoggerLevels) {
 logger :: proc(level: engine.LoggerLevels, msg: string, args: ..any) {
 	cmessage := fmt.ctprintf(msg, ..args)
 	sdl.LogMessage(cast(i32)sdl.LogCategory.CUSTOM, priorities_to_sdl(level), cmessage)
+}
+
+@(private)
+GLColor :: struct {
+	r, g, b, a: f32,
+}
+
+@(private)
+engine_color_to_gl_color :: #force_inline proc(color: engine.Color) -> GLColor {
+	return GLColor {
+		r = f32(color.r) / f32(255),
+		g = f32(color.g) / f32(255),
+		b = f32(color.b) / f32(255),
+		a = f32(color.a) / f32(255),
+	}
 }
