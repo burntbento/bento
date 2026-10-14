@@ -31,6 +31,8 @@ gl_context: sdl.GLContext
 
 window: ^sdl.Window // sdl window
 
+renderer: ^Renderer // opengl renderer
+
 platform_config: ^PlatformConfig // config
 
 gamepad: ^sdl.Gamepad // for gamepad
@@ -201,6 +203,9 @@ init :: proc(config: engine.PlatformConfig) {
 
 	version := gl.GetString(gl.VERSION)
 	logger(.DEBUG, "OpenGL Version: %s", version)
+
+	// renderer
+	renderer = renderer_init()
 
 	// storage
 	platform_storage_init()
@@ -402,6 +407,8 @@ shutdown :: proc() {
 	platform_storage_destroy()
 	platform_config_destroy(platform_config)
 
+	// renderer
+	renderer_destroy(renderer)
 
 	// gl context
 	sdl.GL_DestroyContext(gl_context)
@@ -922,4 +929,69 @@ Renderer :: struct {
 	shader_program: u32,
 	projection:     glsl.mat4,
 	triangle_data:  [MAX_VERTICES]RendererVertex,
+}
+
+renderer_init :: proc() -> ^Renderer {
+
+	// create renderer
+	r := new(Renderer)
+
+	// create vertex array buffer
+	gl.CreateVertexArrays(1, &r.vao)
+
+	// create vertex buffer object
+	gl.CreateBuffers(1, &r.vbo)
+	gl.NamedBufferStorage(
+		r.vbo,
+		size_of(RendererVertex) * MAX_VERTICES,
+		nil,
+		gl.DYNAMIC_STORAGE_BIT,
+	)
+
+	// bind vertex buffer object to vertex array
+	gl.VertexArrayVertexBuffer(r.vao, 0, r.vbo, 0, size_of(RendererVertex))
+
+
+	// enable vertex
+	gl.EnableVertexArrayAttrib(r.vao, 0)
+	gl.EnableVertexArrayAttrib(r.vao, 1)
+
+
+	// position attribute
+	gl.VertexArrayAttribFormat(
+		r.vao,
+		0,
+		4,
+		gl.FLOAT,
+		gl.FALSE,
+		cast(u32)offset_of(RendererVertex, position),
+	)
+
+	// color attribute
+	gl.VertexArrayAttribFormat(
+		r.vao,
+		1,
+		4,
+		gl.FLOAT,
+		gl.FALSE,
+		cast(u32)offset_of(RendererVertex, color),
+	)
+
+	// bind vertex attributes
+	gl.VertexArrayAttribBinding(r.vao, 0, 0)
+	gl.VertexArrayAttribBinding(r.vao, 1, 0)
+
+	// NOTE: this might bite me
+	w, h := get_window_size()
+	r.projection = glsl.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
+
+	// create shader program
+
+	return r
+}
+
+renderer_destroy :: proc(renderer: ^Renderer) {
+	gl.DeleteVertexArrays(1, &renderer.vao)
+	gl.DeleteBuffers(1, &renderer.vbo)
+	free(renderer)
 }
