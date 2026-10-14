@@ -889,6 +889,10 @@ priorities_to_sdl :: proc(level: engine.LoggerLevels) -> sdl.LogPriority {
 
 // -- Logger -- //
 
+// load shaders
+basic_vert_src := #load("../../../shaders/basic.vert.glsl")
+basic_frag_src := #load("../../../shaders/basic.frag.glsl")
+
 init_logger :: proc(level: engine.LoggerLevels) {
 	sdl.SetLogPriorities(priorities_to_sdl(level))
 }
@@ -986,11 +990,25 @@ renderer_init :: proc() -> ^Renderer {
 	r.projection = glsl.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
 
 	// create shader program
+	vert_src := cstring(&basic_vert_src[0])
+	basic_vert_shader := gl.CreateShaderProgramv(gl.VERTEX_SHADER, 1, &vert_src)
+
+	frag_src := cstring(&basic_frag_src[0])
+	basic_frag_shader := gl.CreateShaderProgramv(gl.FRAGMENT_SHADER, 1, &frag_src)
+
+	gl.CreateProgramPipelines(1, &r.shader_program)
+
+	// NOTE: this is giving invalid operation
+	gl.UseProgramStages(r.shader_program, gl.VERTEX_SHADER_BIT, basic_vert_shader)
+	gl.UseProgramStages(r.shader_program, gl.FRAGMENT_SHADER_BIT, basic_frag_shader)
+
+	gl.BindProgramPipeline(r.shader_program)
 
 	return r
 }
 
 renderer_destroy :: proc(renderer: ^Renderer) {
+	gl.DeleteProgramPipelines(1, &renderer.shader_program)
 	gl.DeleteVertexArrays(1, &renderer.vao)
 	gl.DeleteBuffers(1, &renderer.vbo)
 	free(renderer)
