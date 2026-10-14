@@ -4,6 +4,7 @@ import "bento:engine"
 import "core:c"
 import "core:fmt"
 import "core:math"
+import "core:math/linalg/glsl"
 import "core:mem"
 import "core:strings"
 import gl "vendor:OpenGL"
@@ -24,7 +25,7 @@ PlatformStorage :: struct {
 
 // -- OPENGL Version -- //
 MAJOR :: 4
-MINOR :: 1
+MINOR :: 6
 
 gl_context: sdl.GLContext
 
@@ -879,6 +880,8 @@ priorities_to_sdl :: proc(level: engine.LoggerLevels) -> sdl.LogPriority {
 	}
 }
 
+// -- Logger -- //
+
 init_logger :: proc(level: engine.LoggerLevels) {
 	sdl.SetLogPriorities(priorities_to_sdl(level))
 }
@@ -901,4 +904,22 @@ engine_color_to_gl_color :: #force_inline proc(color: engine.Color) -> GLColor {
 		b = f32(color.b) / f32(255),
 		a = f32(color.a) / f32(255),
 	}
+}
+
+// -- Renderer -- //
+
+MAX_TRIANGLES :: 1048
+MAX_VERTICES :: MAX_TRIANGLES * 3
+
+RendererVertex :: struct {
+	position: glsl.vec4,
+	color:    glsl.vec4,
+}
+
+Renderer :: struct {
+	vao:            u32,
+	vbo:            u32,
+	shader_program: u32,
+	projection:     glsl.mat4,
+	triangle_data:  [MAX_VERTICES]RendererVertex,
 }
