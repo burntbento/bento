@@ -998,7 +998,6 @@ renderer_init :: proc() -> ^Renderer {
 
 	gl.CreateProgramPipelines(1, &r.shader_program)
 
-	// NOTE: this is giving invalid operation
 	gl.UseProgramStages(r.shader_program, gl.VERTEX_SHADER_BIT, basic_vert_shader)
 	gl.UseProgramStages(r.shader_program, gl.FRAGMENT_SHADER_BIT, basic_frag_shader)
 
