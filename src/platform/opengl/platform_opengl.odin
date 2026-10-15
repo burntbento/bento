@@ -265,7 +265,22 @@ clear_screen :: proc(color: engine.Color) {
 
 draw_circle :: proc(circle: engine.Circle, color: engine.Color) {}
 
-draw_rect :: proc(rect: engine.Rect, color: engine.Color) {}
+draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
+
+	renderer.triangle_data[0].position = {-0.5, -0.5, 0, 1}
+	renderer.triangle_data[0].color = {1, 0, 0, 1}
+
+	renderer.triangle_data[1].position = {0, 0.5, 0, 1}
+	renderer.triangle_data[1].color = {0, 1, 0, 1}
+
+	renderer.triangle_data[2].position = {0.5, -0.5, 0, 1}
+	renderer.triangle_data[2].color = {0, 0, 1, 1}
+
+	gl.BindVertexArray(renderer.vao)
+	gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo)
+	gl.BufferSubData(gl.ARRAY_BUFFER, 0, 3 * 3 * size_of(RendererVertex), &renderer.triangle_data)
+	gl.DrawArrays(gl.TRIANGLES, 0, 9)
+}
 
 draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {}
 
