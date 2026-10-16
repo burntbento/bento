@@ -2,6 +2,7 @@ package move
 
 import "bento:engine"
 import "bento:execute"
+import "core:math/rand"
 
 // -- Globals -- //
 
@@ -14,6 +15,15 @@ screen_height: int // height of the screen in pixels
 
 rect: engine.Rect // rectangle i.e. player
 speed :: 300 // movement speed
+
+max_rectangles :: 100
+
+MoveRect :: struct {
+	rect:  engine.Rect,
+	color: engine.Color,
+}
+
+rectangles: [max_rectangles]MoveRect
 
 // -- Main Loop -- //
 
@@ -65,6 +75,21 @@ init :: proc(platform: ^engine.Platform) {
 		rect_width,
 		rect_width,
 	)
+
+	for i in 0 ..< max_rectangles {
+		x := rand.int_max(screen_width)
+		y := rand.int_max(screen_height)
+		width := rand.int_max(100)
+
+		r := rand.int_max(255)
+		g := rand.int_max(255)
+		b := rand.int_max(255)
+
+		rectangles[i] = MoveRect {
+			rect  = engine.rect(f64(x), f64(y), f64(width), f64(width)),
+			color = engine.color(u8(r), u8(g), u8(b), 255),
+		}
+	}
 }
 
 update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
@@ -96,6 +121,9 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	// flush screen with a blank color
 	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
 
+	for i in 0 ..< max_rectangles {
+		engine.cmd_draw_rect(state.cmdbuf, rectangles[i].rect, rectangles[i].color)
+	}
 	// draw red rectangle
 	engine.cmd_draw_rect(state.cmdbuf, rect, engine.RED)
 	return state.cmdbuf

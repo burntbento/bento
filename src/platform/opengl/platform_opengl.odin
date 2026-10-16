@@ -266,7 +266,6 @@ clear_screen :: proc(color: engine.Color) {
 draw_circle :: proc(circle: engine.Circle, color: engine.Color) {}
 
 draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
-
 	gl_color := engine_color_to_gl_color(color)
 
 	renderer_push_vertex(renderer, {0, 0, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
@@ -275,6 +274,7 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	renderer_push_vertex(renderer, {1, 0, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
 	renderer_push_vertex(renderer, {1, -1, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
 	renderer_push_vertex(renderer, {0, -1, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
+	defer renderer_clear_vertices(renderer)
 
 	projection_location := gl.GetUniformLocation(
 		renderer.shader_pipeline.vertex_shader,
@@ -303,8 +303,13 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 
 	gl.BindVertexArray(renderer.vao)
 	gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo)
-	gl.BufferSubData(gl.ARRAY_BUFFER, 0, 18 * size_of(RendererVertex), &renderer.triangle_data)
-	gl.DrawArrays(gl.TRIANGLES, 0, 18)
+	gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		0,
+		renderer.triangle_count * 3 * size_of(RendererVertex),
+		&renderer.triangle_data,
+	)
+	gl.DrawArrays(gl.TRIANGLES, 0, i32(renderer.triangle_count * 3))
 }
 
 draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {}
@@ -1075,6 +1080,10 @@ renderer_get_transformation_matrix :: proc(
 	translate := glsl.mat4Translate({f32(x), f32(y), 0})
 	scale := glsl.mat4Scale({f32(width), f32(height), 1})
 	return r.projection * translate * scale
+}
+
+renderer_clear_vertices :: proc(r: ^Renderer) {
+	r.triangle_count = 0
 }
 
 renderer_destroy :: proc(renderer: ^Renderer) {
