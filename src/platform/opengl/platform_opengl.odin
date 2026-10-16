@@ -387,7 +387,9 @@ draw_sprite :: proc(
 	color: engine.Color,
 	flip_x, flip_y: bool,
 	stretch_x, stretch_y: int,
-) {}
+) {
+
+}
 
 measure_text :: proc(font_handle: int, text: string) -> (width: int, height: int) {
 	if font_handle < 0 || font_handle >= len(fonts) do return 0, 0
@@ -473,10 +475,11 @@ create_texture :: proc(width, height, channels, bpp: int, data: ^u32) -> int {
 	gl.TextureParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TextureParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 
-	internal_format := (channels == 4 ? gl.RGBA32F : gl.RGBA16F)
+	internal_format := (channels == 4 ? gl.RGBA8 : gl.RGB8)
 	gl.TextureStorage2D(target, 1, u32(internal_format), i32(width), i32(height))
 	gl.TextureSubImage2D(target, 0, 0, 0, i32(width), i32(height), gl.RGBA, gl.UNSIGNED_BYTE, data)
 	logger(.DEBUG, "Texture created")
+	gl.GenerateTextureMipmap(target)
 
 	append(
 		&textures,
