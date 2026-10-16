@@ -47,8 +47,8 @@ text_buffer_len: int // text buffer length
 MAX_CONCURRENT_AUDIO_STREAMS :: 32
 PLACEHOLDER_TEXTURE_HANDLE :: -1
 
-placeholder_texture: ^sdl.Texture // pointer for placeholder texture
-textures: [dynamic]^sdl.Texture // dynamic array of textures
+placeholder_texture: RendererTexture // pointer for placeholder texture
+textures: [dynamic]RendererTexture // dynamic array of textures
 streams: [MAX_CONCURRENT_AUDIO_STREAMS]^sdl.AudioStream // array of audio streams
 stream_count := 0 // current stream count, could also migrate to dynamic array
 
@@ -464,13 +464,43 @@ pop_canvas :: proc() {}
 create_placeholder_texture :: proc() {}
 
 
-create_texture :: proc(width, height, channels, bpp: int, data: ^u32) -> int {return -1}
+create_texture :: proc(width, height, channels, bpp: int, data: ^u32) -> int {
+	target: u32
+	gl.CreateTextures(gl.TEXTURE_2D, 1, &target)
+
+	gl.TextureParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TextureParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+
+	internal_format := (channels == 4 ? gl.RGBA32F : gl.RGBA16F)
+	gl.TextureStorage2D(target, 1, u32(internal_format), i32(width), i32(height))
+	gl.TextureSubImage2D(target, 0, 0, 0, i32(width), i32(height), gl.RGBA, gl.UNSIGNED_BYTE, data)
+	logger(.DEBUG, "Texture created")
+
+	append(
+		&textures,
+		RendererTexture {
+			target = target,
+			channels = channels,
+			bpp = bpp,
+			width = width,
+			height = height,
+		},
+	)
+	return len(textures) - 1
+}
 
 
 /*
 	 Destroys all textures, should always be called as a placeholder is created in the init procedure.
 */
-destroy_all_textures :: proc() {}
+destroy_all_textures :: proc() {
+	for &texture in textures {
+		gl.DeleteTextures(1, &texture.target)
+	}
+	delete(textures)
+}
 
 destroy_all_fonts :: proc() {}
 
@@ -1015,6 +1045,14 @@ engine_color_to_gl_color :: #force_inline proc(color: engine.Color) -> GLColor {
 
 MAX_TRIANGLES :: 1048
 MAX_VERTICES :: MAX_TRIANGLES * 3
+
+RendererTexture :: struct {
+	target:   u32,
+	width:    int,
+	height:   int,
+	channels: int,
+	bpp:      int,
+}
 
 RendererVertex :: struct {
 	position: glsl.vec4,
