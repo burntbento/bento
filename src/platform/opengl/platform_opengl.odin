@@ -269,23 +269,12 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 
 	gl_color := engine_color_to_gl_color(color)
 
-	renderer.triangle_data[0].position = {0, 0, 0, 1}
-	renderer.triangle_data[0].color = {gl_color.r, gl_color.g, gl_color.b, gl_color.a}
-
-	renderer.triangle_data[1].position = {0, -1, 0, 1}
-	renderer.triangle_data[1].color = {gl_color.r, gl_color.g, gl_color.b, gl_color.a}
-
-	renderer.triangle_data[2].position = {1, 0, 0, 1}
-	renderer.triangle_data[2].color = {gl_color.r, gl_color.g, gl_color.b, gl_color.a}
-
-	renderer.triangle_data[3].position = {1, 0, 0, 1}
-	renderer.triangle_data[3].color = {gl_color.r, gl_color.g, gl_color.b, gl_color.a}
-
-	renderer.triangle_data[4].position = {1, -1, 0, 1}
-	renderer.triangle_data[4].color = {gl_color.r, gl_color.g, gl_color.b, gl_color.a}
-
-	renderer.triangle_data[5].position = {0, -1, 0, 1}
-	renderer.triangle_data[5].color = {gl_color.r, gl_color.g, gl_color.b, gl_color.a}
+	renderer_push_vertex(renderer, {0, 0, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
+	renderer_push_vertex(renderer, {0, -1, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
+	renderer_push_vertex(renderer, {1, 0, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
+	renderer_push_vertex(renderer, {1, 0, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
+	renderer_push_vertex(renderer, {1, -1, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
+	renderer_push_vertex(renderer, {0, -1, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
 
 	projection_location := gl.GetUniformLocation(
 		renderer.shader_pipeline.vertex_shader,
@@ -296,10 +285,14 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 		return
 	}
 
-	translate := glsl.mat4Translate({f32(rect.x), f32(rect.y), 0})
-	scale := glsl.mat4Scale({f32(rect.width), f32(rect.height), 1})
-	transformation := renderer.projection * translate * scale
-
+	transformation := renderer_get_transformation_matrix(
+		renderer^,
+		rect.x,
+		rect.y,
+		rect.width,
+		rect.height,
+		1,
+	)
 	gl.ProgramUniformMatrix4fv(
 		renderer.shader_pipeline.vertex_shader,
 		projection_location,
@@ -986,6 +979,7 @@ Renderer :: struct {
 	shader_pipeline: ShaderPipeline,
 	projection:      glsl.mat4,
 	triangle_data:   [MAX_VERTICES]RendererVertex,
+	triangle_count:  int,
 }
 
 renderer_init :: proc() -> ^Renderer {
@@ -1065,6 +1059,22 @@ renderer_init :: proc() -> ^Renderer {
 	gl.BindProgramPipeline(r.shader_pipeline.pipeline)
 
 	return r
+}
+
+renderer_push_vertex :: proc(r: ^Renderer, position: glsl.vec4, color: glsl.vec4) {
+	count := r.triangle_count
+	renderer.triangle_data[count].position = position
+	renderer.triangle_data[count].color = color
+	r.triangle_count += 1
+}
+
+renderer_get_transformation_matrix :: proc(
+	r: Renderer,
+	x, y, width, height, scale: f64,
+) -> glsl.mat4 {
+	translate := glsl.mat4Translate({f32(x), f32(y), 0})
+	scale := glsl.mat4Scale({f32(width), f32(height), 1})
+	return r.projection * translate * scale
 }
 
 renderer_destroy :: proc(renderer: ^Renderer) {
