@@ -122,7 +122,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
 
 	for i in 0 ..< max_rectangles {
-		engine.cmd_draw_rect(state.cmdbuf, rectangles[i].rect, rectangles[i].color)
+		engine.cmd_draw_rect_line(state.cmdbuf, rectangles[i].rect, rectangles[i].color)
 	}
 	// draw red rectangle
 	engine.cmd_draw_rect(state.cmdbuf, rect, engine.RED)

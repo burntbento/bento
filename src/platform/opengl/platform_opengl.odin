@@ -306,13 +306,62 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
 		0,
-		renderer.triangle_count * 3 * size_of(RendererVertex),
-		&renderer.triangle_data,
+		renderer.vertices_count * size_of(RendererVertex),
+		&renderer.vertices_data,
 	)
-	gl.DrawArrays(gl.TRIANGLES, 0, i32(renderer.triangle_count * 3))
+	gl.DrawArrays(gl.TRIANGLES, 0, i32(renderer.vertices_count))
 }
 
-draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {}
+draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
+
+	gl_color := engine_color_to_gl_color(color)
+
+	renderer_push_vertex(renderer, {0, 0, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
+	renderer_push_vertex(renderer, {0, -1, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
+	renderer_push_vertex(renderer, {1, -1, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
+	renderer_push_vertex(renderer, {1, 0, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
+	defer renderer_clear_vertices(renderer)
+
+	projection_location := gl.GetUniformLocation(
+		renderer.shader_pipeline.vertex_shader,
+		"vProjection",
+	)
+	if projection_location < 0 {
+		logger(.ERROR, "Failed to find location")
+		return
+	}
+
+	transformation := renderer_get_transformation_matrix(
+		renderer^,
+		rect.x,
+		rect.y,
+		rect.width,
+		rect.height,
+		1,
+	)
+	gl.ProgramUniformMatrix4fv(
+		renderer.shader_pipeline.vertex_shader,
+		projection_location,
+		1,
+		gl.FALSE,
+		&transformation[0][0],
+	)
+
+	gl.BindVertexArray(renderer.vao)
+	gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo)
+	gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		0,
+		renderer.vertices_count * size_of(RendererVertex),
+		&renderer.vertices_data,
+	)
+
+	// set to line mode then reset back to fill
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	defer gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
+
+	gl.DrawArrays(gl.LINE_LOOP, 0, i32(renderer.vertices_count))
+}
 
 draw_arc :: proc(
 	center: engine.Vector2,
@@ -983,8 +1032,8 @@ Renderer :: struct {
 	vbo:             u32,
 	shader_pipeline: ShaderPipeline,
 	projection:      glsl.mat4,
-	triangle_data:   [MAX_VERTICES]RendererVertex,
-	triangle_count:  int,
+	vertices_data:   [MAX_VERTICES]RendererVertex,
+	vertices_count:  int,
 }
 
 renderer_init :: proc() -> ^Renderer {
@@ -1067,10 +1116,10 @@ renderer_init :: proc() -> ^Renderer {
 }
 
 renderer_push_vertex :: proc(r: ^Renderer, position: glsl.vec4, color: glsl.vec4) {
-	count := r.triangle_count
-	renderer.triangle_data[count].position = position
-	renderer.triangle_data[count].color = color
-	r.triangle_count += 1
+	count := r.vertices_count
+	renderer.vertices_data[count].position = position
+	renderer.vertices_data[count].color = color
+	r.vertices_count += 1
 }
 
 renderer_get_transformation_matrix :: proc(
@@ -1083,7 +1132,7 @@ renderer_get_transformation_matrix :: proc(
 }
 
 renderer_clear_vertices :: proc(r: ^Renderer) {
-	r.triangle_count = 0
+	r.vertices_count = 0
 }
 
 renderer_destroy :: proc(renderer: ^Renderer) {
