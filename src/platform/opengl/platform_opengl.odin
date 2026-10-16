@@ -267,19 +267,51 @@ draw_circle :: proc(circle: engine.Circle, color: engine.Color) {}
 
 draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 
-	renderer.triangle_data[0].position = {-0.5, -0.5, 0, 1}
-	renderer.triangle_data[0].color = {1, 0, 0, 1}
+	gl_color := engine_color_to_gl_color(color)
 
-	renderer.triangle_data[1].position = {0, 0.5, 0, 1}
-	renderer.triangle_data[1].color = {0, 1, 0, 1}
+	renderer.triangle_data[0].position = {0, 0, 0, 1}
+	renderer.triangle_data[0].color = {gl_color.r, gl_color.g, gl_color.b, gl_color.a}
 
-	renderer.triangle_data[2].position = {0.5, -0.5, 0, 1}
-	renderer.triangle_data[2].color = {0, 0, 1, 1}
+	renderer.triangle_data[1].position = {0, -1, 0, 1}
+	renderer.triangle_data[1].color = {gl_color.r, gl_color.g, gl_color.b, gl_color.a}
+
+	renderer.triangle_data[2].position = {1, 0, 0, 1}
+	renderer.triangle_data[2].color = {gl_color.r, gl_color.g, gl_color.b, gl_color.a}
+
+	renderer.triangle_data[3].position = {1, 0, 0, 1}
+	renderer.triangle_data[3].color = {gl_color.r, gl_color.g, gl_color.b, gl_color.a}
+
+	renderer.triangle_data[4].position = {1, -1, 0, 1}
+	renderer.triangle_data[4].color = {gl_color.r, gl_color.g, gl_color.b, gl_color.a}
+
+	renderer.triangle_data[5].position = {0, -1, 0, 1}
+	renderer.triangle_data[5].color = {gl_color.r, gl_color.g, gl_color.b, gl_color.a}
+
+	projection_location := gl.GetUniformLocation(
+		renderer.shader_pipeline.vertex_shader,
+		"vProjection",
+	)
+	if projection_location < 0 {
+		logger(.ERROR, "Failed to find location")
+		return
+	}
+
+	translate := glsl.mat4Translate({f32(rect.x), f32(rect.y), 0})
+	scale := glsl.mat4Scale({f32(rect.width), f32(rect.height), 1})
+	transformation := renderer.projection * translate * scale
+
+	gl.ProgramUniformMatrix4fv(
+		renderer.shader_pipeline.vertex_shader,
+		projection_location,
+		1,
+		gl.FALSE,
+		&transformation[0][0],
+	)
 
 	gl.BindVertexArray(renderer.vao)
 	gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo)
-	gl.BufferSubData(gl.ARRAY_BUFFER, 0, 3 * 3 * size_of(RendererVertex), &renderer.triangle_data)
-	gl.DrawArrays(gl.TRIANGLES, 0, 9)
+	gl.BufferSubData(gl.ARRAY_BUFFER, 0, 18 * size_of(RendererVertex), &renderer.triangle_data)
+	gl.DrawArrays(gl.TRIANGLES, 0, 18)
 }
 
 draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {}
@@ -942,12 +974,18 @@ RendererVertex :: struct {
 	color:    glsl.vec4,
 }
 
+ShaderPipeline :: struct {
+	pipeline:        u32,
+	vertex_shader:   u32,
+	fragment_shader: u32,
+}
+
 Renderer :: struct {
-	vao:            u32,
-	vbo:            u32,
-	shader_program: u32,
-	projection:     glsl.mat4,
-	triangle_data:  [MAX_VERTICES]RendererVertex,
+	vao:             u32,
+	vbo:             u32,
+	shader_pipeline: ShaderPipeline,
+	projection:      glsl.mat4,
+	triangle_data:   [MAX_VERTICES]RendererVertex,
 }
 
 renderer_init :: proc() -> ^Renderer {
@@ -1006,23 +1044,33 @@ renderer_init :: proc() -> ^Renderer {
 
 	// create shader program
 	vert_src := cstring(&basic_vert_src[0])
-	basic_vert_shader := gl.CreateShaderProgramv(gl.VERTEX_SHADER, 1, &vert_src)
+	r.shader_pipeline.vertex_shader = gl.CreateShaderProgramv(gl.VERTEX_SHADER, 1, &vert_src)
 
 	frag_src := cstring(&basic_frag_src[0])
-	basic_frag_shader := gl.CreateShaderProgramv(gl.FRAGMENT_SHADER, 1, &frag_src)
+	r.shader_pipeline.fragment_shader = gl.CreateShaderProgramv(gl.FRAGMENT_SHADER, 1, &frag_src)
 
-	gl.CreateProgramPipelines(1, &r.shader_program)
+	gl.CreateProgramPipelines(1, &r.shader_pipeline.pipeline)
 
-	gl.UseProgramStages(r.shader_program, gl.VERTEX_SHADER_BIT, basic_vert_shader)
-	gl.UseProgramStages(r.shader_program, gl.FRAGMENT_SHADER_BIT, basic_frag_shader)
+	gl.UseProgramStages(
+		r.shader_pipeline.pipeline,
+		gl.VERTEX_SHADER_BIT,
+		r.shader_pipeline.vertex_shader,
+	)
+	gl.UseProgramStages(
+		r.shader_pipeline.pipeline,
+		gl.FRAGMENT_SHADER_BIT,
+		r.shader_pipeline.fragment_shader,
+	)
 
-	gl.BindProgramPipeline(r.shader_program)
+	gl.BindProgramPipeline(r.shader_pipeline.pipeline)
 
 	return r
 }
 
 renderer_destroy :: proc(renderer: ^Renderer) {
-	gl.DeleteProgramPipelines(1, &renderer.shader_program)
+	gl.DeleteProgram(renderer.shader_pipeline.vertex_shader)
+	gl.DeleteProgram(renderer.shader_pipeline.fragment_shader)
+	gl.DeleteProgramPipelines(1, &renderer.shader_pipeline.pipeline)
 	gl.DeleteVertexArrays(1, &renderer.vao)
 	gl.DeleteBuffers(1, &renderer.vbo)
 	free(renderer)
