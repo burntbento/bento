@@ -271,12 +271,42 @@ draw_circle :: proc(circle: engine.Circle, color: engine.Color) {}
 draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	gl_color := engine_color_to_gl_color(color)
 
-	renderer_push_vertex(renderer, {0, 0, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
-	renderer_push_vertex(renderer, {0, -1, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
-	renderer_push_vertex(renderer, {1, 0, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
-	renderer_push_vertex(renderer, {1, 0, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
-	renderer_push_vertex(renderer, {1, -1, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
-	renderer_push_vertex(renderer, {0, -1, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
+	renderer_push_vertex(
+		renderer,
+		{0, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{0, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{0, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
 	defer renderer_clear_vertices(renderer)
 
 	projection_location := gl.GetUniformLocation(
@@ -287,6 +317,8 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 		logger(.ERROR, "Failed to find location")
 		return
 	}
+
+	gl.BindTextureUnit(0, placeholder_texture.target)
 
 	transformation := renderer_get_transformation_matrix(
 		renderer^,
@@ -319,10 +351,30 @@ draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 
 	gl_color := engine_color_to_gl_color(color)
 
-	renderer_push_vertex(renderer, {0, 0, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
-	renderer_push_vertex(renderer, {0, -1, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
-	renderer_push_vertex(renderer, {1, -1, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
-	renderer_push_vertex(renderer, {1, 0, 0, 1}, {gl_color.r, gl_color.g, gl_color.b, gl_color.a})
+	renderer_push_vertex(
+		renderer,
+		{0, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{0, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
 	defer renderer_clear_vertices(renderer)
 
 	projection_location := gl.GetUniformLocation(
@@ -333,6 +385,7 @@ draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 		logger(.ERROR, "Failed to find location")
 		return
 	}
+	gl.BindTextureUnit(0, placeholder_texture.target)
 
 	transformation := renderer_get_transformation_matrix(
 		renderer^,
@@ -391,6 +444,88 @@ draw_sprite :: proc(
 	flip_x, flip_y: bool,
 	stretch_x, stretch_y: int,
 ) {
+	gl_color := engine_color_to_gl_color(color)
+	texture := textures[texture_handle]
+
+	u0 := f32(texture_rect.x / f64(texture.width))
+	v0 := f32(texture_rect.y / f64(texture.height))
+	u1 := f32((texture_rect.x + texture_rect.width) / f64(texture.width))
+	v1 := f32((texture_rect.y + texture_rect.height) / f64(texture.height))
+
+	renderer_push_vertex(
+		renderer,
+		{0, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{u0, v0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{0, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{u0, v1},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{u1, v0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{u1, v0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{u1, v1},
+	)
+	renderer_push_vertex(
+		renderer,
+		{0, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{u0, v1},
+	)
+	defer renderer_clear_vertices(renderer)
+
+	projection_location := gl.GetUniformLocation(
+		renderer.shader_pipeline.vertex_shader,
+		"vProjection",
+	)
+	if projection_location < 0 {
+		logger(.ERROR, "Failed to find location")
+		return
+	}
+
+	gl.BindTextureUnit(0, texture.target)
+
+	transformation := renderer_get_transformation_matrix(
+		renderer^,
+		position.x,
+		position.y,
+		texture_rect.width * scale,
+		texture_rect.height * scale,
+		1,
+	)
+	gl.ProgramUniformMatrix4fv(
+		renderer.shader_pipeline.vertex_shader,
+		projection_location,
+		1,
+		gl.FALSE,
+		&transformation[0][0],
+	)
+
+	gl.BindVertexArray(renderer.vao)
+	gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo)
+	gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		0,
+		renderer.vertices_count * size_of(RendererVertex),
+		&renderer.vertices_data,
+	)
+	gl.DrawArrays(gl.TRIANGLES, 0, i32(renderer.vertices_count))
 
 }
 
@@ -470,7 +605,7 @@ create_placeholder_texture :: proc() {
 	target: u32
 	width: i32 = 1
 	height: i32 = 1
-	image := []u8{0, 255, 0, 255}
+	image := []u8{255, 255, 255, 255}
 	gl.CreateTextures(gl.TEXTURE_2D, 1, &target)
 
 	gl.TextureParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
@@ -534,6 +669,7 @@ create_texture :: proc(width, height, channels, bpp: int, data: ^u32) -> int {
 	 Destroys all textures, should always be called as a placeholder is created in the init procedure.
 */
 destroy_all_textures :: proc() {
+	gl.DeleteTextures(1, &placeholder_texture.target)
 	for &texture in textures {
 		gl.DeleteTextures(1, &texture.target)
 	}
@@ -1095,6 +1231,7 @@ RendererTexture :: struct {
 RendererVertex :: struct {
 	position: glsl.vec4,
 	color:    glsl.vec4,
+	uv:       glsl.vec2,
 }
 
 ShaderPipeline :: struct {
@@ -1136,6 +1273,7 @@ renderer_init :: proc() -> ^Renderer {
 	// enable vertex
 	gl.EnableVertexArrayAttrib(r.vao, 0)
 	gl.EnableVertexArrayAttrib(r.vao, 1)
+	gl.EnableVertexArrayAttrib(r.vao, 2)
 
 
 	// position attribute
@@ -1158,9 +1296,20 @@ renderer_init :: proc() -> ^Renderer {
 		cast(u32)offset_of(RendererVertex, color),
 	)
 
+	// uv attribute
+	gl.VertexArrayAttribFormat(
+		r.vao,
+		2,
+		2,
+		gl.FLOAT,
+		gl.FALSE,
+		cast(u32)offset_of(RendererVertex, uv),
+	)
+
 	// bind vertex attributes
 	gl.VertexArrayAttribBinding(r.vao, 0, 0)
 	gl.VertexArrayAttribBinding(r.vao, 1, 0)
+	gl.VertexArrayAttribBinding(r.vao, 2, 0)
 
 	// NOTE: this might bite me
 	w, h := get_window_size()
@@ -1188,13 +1337,17 @@ renderer_init :: proc() -> ^Renderer {
 
 	gl.BindProgramPipeline(r.shader_pipeline.pipeline)
 
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
 	return r
 }
 
-renderer_push_vertex :: proc(r: ^Renderer, position: glsl.vec4, color: glsl.vec4) {
+renderer_push_vertex :: proc(r: ^Renderer, position: glsl.vec4, color: glsl.vec4, uv: glsl.vec2) {
 	count := r.vertices_count
 	renderer.vertices_data[count].position = position
 	renderer.vertices_data[count].color = color
+	renderer.vertices_data[count].uv = uv
 	r.vertices_count += 1
 }
 
