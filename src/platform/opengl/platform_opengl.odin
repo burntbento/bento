@@ -447,11 +447,15 @@ draw_sprite :: proc(
 	gl_color := engine_color_to_gl_color(color)
 	texture := textures[texture_handle]
 
+	t_x, t_y, t_s := camera_translation_position(position.x, position.y, scale)
+
+	// calculate relative position
 	u0 := f32(texture_rect.x / f64(texture.width))
 	v0 := f32(texture_rect.y / f64(texture.height))
 	u1 := f32((texture_rect.x + texture_rect.width) / f64(texture.width))
 	v1 := f32((texture_rect.y + texture_rect.height) / f64(texture.height))
 
+	// push vertices
 	renderer_push_vertex(
 		renderer,
 		{0, 0, 0, 1},
@@ -503,11 +507,11 @@ draw_sprite :: proc(
 
 	transformation := renderer_get_transformation_matrix(
 		renderer^,
-		position.x,
-		position.y,
-		texture_rect.width * scale,
-		texture_rect.height * scale,
-		1,
+		t_x,
+		t_y,
+		texture_rect.width,
+		texture_rect.height,
+		t_s,
 	)
 	gl.ProgramUniformMatrix4fv(
 		renderer.shader_pipeline.vertex_shader,
@@ -543,9 +547,13 @@ draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, colo
 
 draw_debug_text :: proc(position: engine.Vector2, text: string, scale: f32, color: engine.Color) {}
 
-attach_camera :: proc(cam: ^engine.Camera2D) {}
+attach_camera :: proc(cam: ^engine.Camera2D) {
+	render_cam = cam
+}
 
-detach_camera :: proc() {}
+detach_camera :: proc() {
+	render_cam = nil
+}
 
 get_performance_frequency :: proc() -> u64 {
 	return sdl.GetPerformanceFrequency()
@@ -1356,8 +1364,8 @@ renderer_get_transformation_matrix :: proc(
 	x, y, width, height, scale: f64,
 ) -> glsl.mat4 {
 	translate := glsl.mat4Translate({f32(x), f32(y), 0})
-	scale := glsl.mat4Scale({f32(width), f32(height), 1})
-	return r.projection * translate * scale
+	scale_matrix := glsl.mat4Scale({f32(width * scale), f32(height * scale), 1})
+	return r.projection * translate * scale_matrix
 }
 
 renderer_clear_vertices :: proc(r: ^Renderer) {
