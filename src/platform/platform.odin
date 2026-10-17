@@ -1471,8 +1471,21 @@ renderer_get_transformation_matrix :: proc(
 	_flip_x_offset := (width) * scale if flip_x else 0
 	_flip_y_offset := (height) * scale if flip_y else 0
 
-	translate := glsl.mat4Translate({f32(x + _flip_x_offset), f32(y + _flip_y_offset), 0})
+	// translate first to origin
+	translate_1 := glsl.mat4Translate(
+		{f32(x + (width * scale / 2)), f32(y + (height * scale / 2)), 0},
+	)
+	// rotate around origin
 	rotation := glsl.mat4Rotate({0, 0, 1}, math.to_radians(rotation))
+	// translate to top left as position
+	translate_2 := glsl.mat4Translate(
+		{
+			f32(-(width * scale / 2)) + f32(_flip_x_offset),
+			f32(-(height * scale / 2)) + f32(_flip_y_offset),
+			0,
+		},
+	)
+	// scale
 	scale_matrix := glsl.mat4Scale(
 		{
 			f32((width + stretch_x) * scale) * f32(_flip_x),
@@ -1480,7 +1493,7 @@ renderer_get_transformation_matrix :: proc(
 			1,
 		},
 	)
-	return r.projection * translate * rotation * scale_matrix
+	return r.projection * translate_1 * rotation * translate_2 * scale_matrix
 }
 
 renderer_clear_vertices :: proc(r: ^Renderer) {
