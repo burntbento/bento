@@ -54,6 +54,7 @@ stream_count := 0 // current stream count, could also migrate to dynamic array
 
 // fonts
 fonts: [dynamic]^ttf.Font // dynamic array of ttf fonts
+font_texture_handle: int
 text_engine: ^ttf.TextEngine // pointer to sdl text engine
 
 DEADZONE: f64
@@ -209,6 +210,10 @@ init :: proc(config: engine.PlatformConfig) {
 
 	// create placeholder texture
 	create_placeholder_texture()
+
+	// create font texture
+	w, h := get_window_size()
+	create_font_texture(w, h)
 
 	// storage
 	platform_storage_init()
@@ -550,7 +555,54 @@ measure_text :: proc(font_handle: int, text: string) -> (width: int, height: int
 	return int(w), int(h)
 }
 
-draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, color: engine.Color) {}
+draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, color: engine.Color) {
+
+	font := fonts[font_handle]
+	font_texture := textures[font_texture_handle]
+
+	text_surface := ttf.RenderText_Blended_Wrapped(
+		font,
+		raw_data(text),
+		len(text),
+		{color.r, color.g, color.b, color.a},
+		0,
+	)
+	defer sdl.DestroySurface(text_surface)
+
+	conv_surface := sdl.ConvertSurface(text_surface, sdl.PixelFormat.RGBA32)
+	defer sdl.DestroySurface(conv_surface)
+
+	font_texture_resize(int(conv_surface.w), int(conv_surface.h))
+	gl.TextureSubImage2D(
+		font_texture.target,
+		0,
+		0,
+		0,
+		conv_surface.w,
+		conv_surface.h,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		conv_surface.pixels,
+	)
+	gl.GenerateTextureMipmap(font_texture.target)
+
+	textures[font_texture_handle].width = int(conv_surface.w)
+	textures[font_texture_handle].height = int(conv_surface.h)
+
+	draw_sprite(
+		position,
+		1,
+		0,
+		engine.vector2(0, 0),
+		font_texture_handle,
+		engine.rect(0, 0, f64(conv_surface.w), f64(conv_surface.h)),
+		engine.WHITE,
+		false,
+		false,
+		0,
+		0,
+	)
+}
 
 
 draw_debug_text :: proc(position: engine.Vector2, text: string, scale: f32, color: engine.Color) {}
@@ -651,6 +703,33 @@ create_placeholder_texture :: proc() {
 	logger(.DEBUG, "Created placeholder texture")
 }
 
+initialise_texture_target :: proc(target: ^u32, width, height: int) {
+	gl.CreateTextures(gl.TEXTURE_2D, 1, target)
+
+	gl.TextureParameteri(target^, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(target^, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(target^, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TextureParameteri(target^, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+
+	gl.TextureStorage2D(target^, 1, gl.RGBA8, i32(width), i32(height))
+	gl.GenerateTextureMipmap(target^)
+}
+
+create_font_texture :: proc(width, height: int) {
+	target: u32
+	initialise_texture_target(&target, width, height)
+	append(
+		&textures,
+		RendererTexture{target = target, width = width, height = height, channels = 4, bpp = 0},
+	)
+	font_texture_handle = len(textures) - 1
+}
+
+font_texture_resize :: proc(width, height: int) {
+	font_texture := textures[font_texture_handle]
+	gl.DeleteTextures(1, &font_texture.target)
+	initialise_texture_target(&font_texture.target, width, height)
+}
 
 create_texture :: proc(width, height, channels, bpp: int, data: ^u32) -> int {
 	target: u32
