@@ -441,7 +441,7 @@ draw_sprite :: proc(
 	stretch_x, stretch_y: int,
 ) {
 	gl_color := engine_color_to_gl_color(color)
-	texture := textures[texture_handle]
+	texture := get_texture(texture_handle)
 
 	t_x, t_y, t_s := camera_translation_position(position.x, position.y, scale)
 
@@ -547,7 +547,7 @@ measure_text :: proc(font_handle: int, text: string) -> (width: int, height: int
 draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, color: engine.Color) {
 
 	font := fonts[font_handle]
-	font_texture := textures[font_texture_handle]
+	font_texture := get_texture(font_texture_handle)
 
 	text_surface := ttf.RenderText_Blended_Wrapped(
 		font,
@@ -694,6 +694,25 @@ initialise_texture_target :: proc(target: ^u32, width, height: int) {
 	gl.GenerateTextureMipmap(target^)
 }
 
+get_texture :: proc(texture_handle: int) -> RendererTexture {
+	if texture_handle < 0 || texture_handle > len(textures) - 1 {
+		logger(.ERROR, "Failed to get texture from handle: %d", texture_handle)
+		return placeholder_texture
+	}
+	texture := textures[texture_handle]
+	return texture
+}
+
+get_font :: proc(font_handle: int) -> ^ttf.Font {
+	if font_handle < 0 || font_handle > len(fonts) - 1 {
+		logger(.ERROR, "Failed to get font from handle: %d", font_handle)
+		// TODO: replace with placeholder
+		return nil
+	}
+	font := fonts[font_handle]
+	return font
+}
+
 create_font_texture :: proc(width, height: int) {
 	target: u32
 	initialise_texture_target(&target, width, height)
@@ -705,7 +724,7 @@ create_font_texture :: proc(width, height: int) {
 }
 
 font_texture_resize :: proc(width, height: int) {
-	font_texture := textures[font_texture_handle]
+	font_texture := get_texture(font_texture_handle)
 	gl.DeleteTextures(1, &font_texture.target)
 	initialise_texture_target(&font_texture.target, width, height)
 }
