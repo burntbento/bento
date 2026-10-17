@@ -693,6 +693,9 @@ destroy_all_textures :: proc() {
 }
 
 destroy_all_fonts :: proc() {
+	for font in fonts {
+		ttf.CloseFont(font)
+	}
 	delete(fonts)
 }
 
