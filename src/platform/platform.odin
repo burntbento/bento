@@ -70,7 +70,7 @@ PlatformConfig :: struct {
 	flags:         sdl.WindowFlags,
 	org:           cstring, // for storage api
 	app:           cstring, // for storage api
-	scale_mode:    sdl.ScaleMode,
+	scale_mode:    i32,
 	logging_level: engine.LoggerLevels,
 	// allocator
 	_allocator:    mem.Allocator,
@@ -123,13 +123,13 @@ platform_config_new :: proc(
 	// set scale mode
 	switch config.scale_mode {
 	case .LINEAR:
-		p_config.scale_mode = .LINEAR
+		p_config.scale_mode = gl.LINEAR
 	case .NEAREST:
-		p_config.scale_mode = .NEAREST
+		p_config.scale_mode = gl.NEAREST
 	case .PIXELART:
-		p_config.scale_mode = .PIXELART
+		p_config.scale_mode = gl.NEAREST
 	case:
-		p_config.scale_mode = .LINEAR
+		p_config.scale_mode = gl.LINEAR
 
 	}
 
@@ -245,33 +245,15 @@ get_page_size :: proc() -> i32 {
 	return sdl.GetSystemPageSize()
 }
 
-
-// deprecated
-shader_create_info :: proc(shader_create_info: engine.ShaderCreateInfo) -> int {return -1}
-
-// deprecated
-set_gpu_fragment_shader_uniforms :: proc(
-	shader: int,
-	slot: u32,
-	uniform: rawptr,
-	uniform_length: u32,
-) {
-}
-
-destroy_all_shaders :: proc() {}
-
-
-push_shader_state :: proc(shader: int) {}
-
-pop_shader_state :: proc() {}
-
 clear_screen :: proc(color: engine.Color) {
 	gl_color := engine_color_to_gl_color(color)
 	gl.ClearColor(gl_color.r, gl_color.g, gl_color.b, gl_color.a)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 }
 
-draw_circle :: proc(circle: engine.Circle, color: engine.Color) {}
+draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
+	logger(.ERROR, "NOT IMPLEMENTED")
+}
 
 draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	gl_color := engine_color_to_gl_color(color)
@@ -431,11 +413,17 @@ draw_arc :: proc(
 	center: engine.Vector2,
 	radius, start_angle, end_angle, thickness: f32,
 	color: engine.Color,
-) {}
+) {
+	logger(.ERROR, "NOT IMPLEMENTED")
+}
 
-set_clip_rect :: proc(rect: engine.Rect) {}
+set_clip_rect :: proc(rect: engine.Rect) {
+	logger(.ERROR, "NOT IMPLEMENTED")
+}
 
-end_clip_rect :: proc() {}
+end_clip_rect :: proc() {
+	logger(.ERROR, "NOT IMPLEMENTED")
+}
 
 // NOTE: i added stretch_x and stretch_y so that you can flex and fit tiles together
 // i.e. 9 slice fitting in the clay renderer. im not too sure if i like the
@@ -453,7 +441,7 @@ draw_sprite :: proc(
 	stretch_x, stretch_y: int,
 ) {
 	gl_color := engine_color_to_gl_color(color)
-	texture := textures[texture_handle]
+	texture := get_texture(texture_handle)
 
 	t_x, t_y, t_s := camera_translation_position(position.x, position.y, scale)
 
@@ -520,7 +508,7 @@ draw_sprite :: proc(
 		texture_rect.width,
 		texture_rect.height,
 		t_s,
-		0,
+		f32(rotation),
 		flip_x,
 		flip_y,
 		f64(stretch_x),
@@ -557,8 +545,8 @@ measure_text :: proc(font_handle: int, text: string) -> (width: int, height: int
 
 draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, color: engine.Color) {
 
-	font := fonts[font_handle]
-	font_texture := textures[font_texture_handle]
+	font := get_font(font_handle)
+	font_texture := get_texture(font_texture_handle)
 
 	text_surface := ttf.RenderText_Blended_Wrapped(
 		font,
@@ -659,16 +647,6 @@ write_file :: proc(path: string, buffer: rawptr, size: int, storage: engine.Stor
 	return true
 }
 
-// create_canvas creates a blank texture onto which you can render onto
-// it will be destoryed at shutdown with destory_all_textures
-create_canvas :: proc(width: int, height: int) -> int {return -1}
-
-
-push_canvas :: proc(canvas: int) {}
-
-pop_canvas :: proc() {}
-
-
 create_placeholder_texture :: proc() {
 	target: u32
 	width: i32 = 1
@@ -678,8 +656,8 @@ create_placeholder_texture :: proc() {
 
 	gl.TextureParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TextureParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	gl.TextureParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TextureParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TextureParameteri(target, gl.TEXTURE_MIN_FILTER, platform_config.scale_mode)
+	gl.TextureParameteri(target, gl.TEXTURE_MAG_FILTER, platform_config.scale_mode)
 
 	gl.TextureStorage2D(target, 1, gl.RGB8, i32(width), i32(height))
 	gl.TextureSubImage2D(
@@ -708,11 +686,30 @@ initialise_texture_target :: proc(target: ^u32, width, height: int) {
 
 	gl.TextureParameteri(target^, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TextureParameteri(target^, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	gl.TextureParameteri(target^, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TextureParameteri(target^, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TextureParameteri(target^, gl.TEXTURE_MIN_FILTER, platform_config.scale_mode)
+	gl.TextureParameteri(target^, gl.TEXTURE_MAG_FILTER, platform_config.scale_mode)
 
 	gl.TextureStorage2D(target^, 1, gl.RGBA8, i32(width), i32(height))
 	gl.GenerateTextureMipmap(target^)
+}
+
+get_texture :: proc(texture_handle: int) -> RendererTexture {
+	if texture_handle < 0 || texture_handle > len(textures) - 1 {
+		logger(.ERROR, "Failed to get texture from handle: %d", texture_handle)
+		return placeholder_texture
+	}
+	texture := textures[texture_handle]
+	return texture
+}
+
+get_font :: proc(font_handle: int) -> ^ttf.Font {
+	if font_handle < 0 || font_handle > len(fonts) - 1 {
+		logger(.ERROR, "Failed to get font from handle: %d", font_handle)
+		// TODO: replace with placeholder
+		return nil
+	}
+	font := fonts[font_handle]
+	return font
 }
 
 create_font_texture :: proc(width, height: int) {
@@ -726,7 +723,7 @@ create_font_texture :: proc(width, height: int) {
 }
 
 font_texture_resize :: proc(width, height: int) {
-	font_texture := textures[font_texture_handle]
+	font_texture := get_texture(font_texture_handle)
 	gl.DeleteTextures(1, &font_texture.target)
 	initialise_texture_target(&font_texture.target, width, height)
 }
@@ -737,8 +734,8 @@ create_texture :: proc(width, height, channels, bpp: int, data: ^u32) -> int {
 
 	gl.TextureParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TextureParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	gl.TextureParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TextureParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TextureParameteri(target, gl.TEXTURE_MIN_FILTER, platform_config.scale_mode)
+	gl.TextureParameteri(target, gl.TEXTURE_MAG_FILTER, platform_config.scale_mode)
 
 	internal_format := (channels == 4 ? gl.RGBA8 : gl.RGB8)
 	gl.TextureStorage2D(target, 1, u32(internal_format), i32(width), i32(height))
@@ -1295,8 +1292,15 @@ init_logger :: proc(level: engine.LoggerLevels) {
 }
 
 logger :: proc(level: engine.LoggerLevels, msg: string, args: ..any) {
-	cmessage := fmt.ctprintf(msg, ..args)
-	sdl.LogMessage(cast(i32)sdl.LogCategory.CUSTOM, priorities_to_sdl(level), cmessage)
+	message := fmt.tprintf(msg, ..args)
+	b := strings.builder_make(context.temp_allocator)
+	strings.write_string(&b, "BENTO ")
+	strings.write_string(&b, message)
+	sdl.LogMessage(
+		cast(i32)sdl.LogCategory.CUSTOM,
+		priorities_to_sdl(level),
+		strings.to_cstring(&b),
+	)
 }
 
 @(private)
@@ -1467,7 +1471,21 @@ renderer_get_transformation_matrix :: proc(
 	_flip_x_offset := (width) * scale if flip_x else 0
 	_flip_y_offset := (height) * scale if flip_y else 0
 
-	translate := glsl.mat4Translate({f32(x + _flip_x_offset), f32(y + _flip_y_offset), 0})
+	// translate first to origin
+	translate_1 := glsl.mat4Translate(
+		{f32(x + (width * scale / 2)), f32(y + (height * scale / 2)), 0},
+	)
+	// rotate around origin
+	rotation := glsl.mat4Rotate({0, 0, 1}, math.to_radians(rotation))
+	// translate to top left as position
+	translate_2 := glsl.mat4Translate(
+		{
+			f32(-(width * scale / 2)) + f32(_flip_x_offset),
+			f32(-(height * scale / 2)) + f32(_flip_y_offset),
+			0,
+		},
+	)
+	// scale
 	scale_matrix := glsl.mat4Scale(
 		{
 			f32((width + stretch_x) * scale) * f32(_flip_x),
@@ -1475,7 +1493,7 @@ renderer_get_transformation_matrix :: proc(
 			1,
 		},
 	)
-	return r.projection * translate * scale_matrix
+	return r.projection * translate_1 * rotation * translate_2 * scale_matrix
 }
 
 renderer_clear_vertices :: proc(r: ^Renderer) {

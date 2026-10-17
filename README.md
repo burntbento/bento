@@ -11,8 +11,8 @@
 ## Dependencies
 
 - Odin
+- OpenGL 4.6
 - SDL3
-- OpenGL
 - SDL_ttf
 
 To use the library either use git submodules or just copy the `src` folder into your project.
