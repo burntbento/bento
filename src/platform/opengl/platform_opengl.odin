@@ -518,6 +518,8 @@ draw_sprite :: proc(
 		0,
 		flip_x,
 		flip_y,
+		f64(stretch_x),
+		f64(stretch_y),
 	)
 	gl.ProgramUniformMatrix4fv(
 		renderer.shader_pipeline.vertex_shader,
@@ -690,7 +692,9 @@ destroy_all_textures :: proc() {
 	delete(textures)
 }
 
-destroy_all_fonts :: proc() {}
+destroy_all_fonts :: proc() {
+	delete(fonts)
+}
 
 
 shutdown :: proc() {
@@ -706,7 +710,6 @@ shutdown :: proc() {
 
 	// destory fonts
 	destroy_all_fonts()
-
 
 	// shutdown audio
 	sdl.CloseAudioDevice(audio_device)
@@ -1372,6 +1375,8 @@ renderer_get_transformation_matrix :: proc(
 	rotation: f32 = 0,
 	flip_x := false,
 	flip_y := false,
+	stretch_x: f64 = 0,
+	stretch_y: f64 = 0,
 ) -> glsl.mat4 {
 
 	_flip_x := 1 if !flip_x else -1
@@ -1382,7 +1387,11 @@ renderer_get_transformation_matrix :: proc(
 
 	translate := glsl.mat4Translate({f32(x + _flip_x_offset), f32(y + _flip_y_offset), 0})
 	scale_matrix := glsl.mat4Scale(
-		{f32(width * scale) * f32(_flip_x), f32(height * scale) * f32(_flip_y), 1},
+		{
+			f32(width * scale + stretch_x) * f32(_flip_x),
+			f32(height * scale + stretch_x) * f32(_flip_y),
+			1,
+		},
 	)
 	return r.projection * translate * scale_matrix
 }
