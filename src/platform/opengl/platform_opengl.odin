@@ -207,6 +207,9 @@ init :: proc(config: engine.PlatformConfig) {
 	// renderer
 	renderer = renderer_init()
 
+	// create placeholder texture
+	create_placeholder_texture()
+
 	// storage
 	platform_storage_init()
 
@@ -463,7 +466,39 @@ push_canvas :: proc(canvas: int) {}
 pop_canvas :: proc() {}
 
 
-create_placeholder_texture :: proc() {}
+create_placeholder_texture :: proc() {
+	target: u32
+	width: i32 = 1
+	height: i32 = 1
+	image := []u8{0, 255, 0, 255}
+	gl.CreateTextures(gl.TEXTURE_2D, 1, &target)
+
+	gl.TextureParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TextureParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+
+	gl.TextureStorage2D(target, 1, gl.RGB8, i32(width), i32(height))
+	gl.TextureSubImage2D(
+		target,
+		0,
+		0,
+		0,
+		i32(width),
+		i32(height),
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		&image[0],
+	)
+	placeholder_texture = RendererTexture {
+		target   = target,
+		width    = int(width),
+		height   = int(height),
+		channels = 4,
+		bpp      = 0,
+	}
+	logger(.DEBUG, "Created placeholder texture")
+}
 
 
 create_texture :: proc(width, height, channels, bpp: int, data: ^u32) -> int {
