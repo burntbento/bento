@@ -515,6 +515,9 @@ draw_sprite :: proc(
 		texture_rect.width,
 		texture_rect.height,
 		t_s,
+		0,
+		flip_x,
+		flip_y,
 	)
 	gl.ProgramUniformMatrix4fv(
 		renderer.shader_pipeline.vertex_shader,
@@ -1362,12 +1365,25 @@ renderer_push_vertex :: proc(r: ^Renderer, position: glsl.vec4, color: glsl.vec4
 	r.vertices_count += 1
 }
 
+// NOTE: need to add pivot and rotation
 renderer_get_transformation_matrix :: proc(
 	r: Renderer,
 	x, y, width, height, scale: f64,
+	rotation: f32 = 0,
+	flip_x := false,
+	flip_y := false,
 ) -> glsl.mat4 {
-	translate := glsl.mat4Translate({f32(x), f32(y), 0})
-	scale_matrix := glsl.mat4Scale({f32(width * scale), f32(height * scale), 1})
+
+	_flip_x := 1 if !flip_x else -1
+	_flip_y := 1 if !flip_y else -1
+
+	_flip_x_offset := (width) * scale if flip_x else 0
+	_flip_y_offset := (height) * scale if flip_y else 0
+
+	translate := glsl.mat4Translate({f32(x + _flip_x_offset), f32(y + _flip_y_offset), 0})
+	scale_matrix := glsl.mat4Scale(
+		{f32(width * scale) * f32(_flip_x), f32(height * scale) * f32(_flip_y), 1},
+	)
 	return r.projection * translate * scale_matrix
 }
 
