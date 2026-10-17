@@ -28,6 +28,7 @@ main :: proc() {
 		window_height = 600,
 		fullscreen    = false,
 		scale_mode    = .NEAREST,
+		logging_level = .VERBOSE,
 	}
 
 	game_data := execute.Game {

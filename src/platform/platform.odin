@@ -1,40 +1,16 @@
-package platform
+package platform_opengl
 
 import "bento:engine"
 import "core:c"
 import "core:fmt"
 import "core:math"
+import "core:math/linalg/glsl"
 import "core:mem"
 import "core:strings"
+import gl "vendor:OpenGL"
 import sdl "vendor:sdl3"
 import ttf "vendor:sdl3/ttf"
 
-// TODO:
-// - clean and organise this file
-
-// WARNING: the u8 color APIs (SetRenderDrawColor, SetTextureColorMod) render
-// incorrectly on SDL3 here, use the f32 variants.
-// sdl.ScaleMode.NEAREST has been set to PIXELART, might want to switch back after
-
-
-/*
-   NOTE:
-   The issue with platform storage is that i want a file storage for editing and saving game artifacts e.g. levels
-   but we also need a user storage for all user data at some point. This is a abstraction over storage containers
-   for os's and steam cloud storage. The game layer should be able to choose which storage to use. But write file
-   will be shared between user and file storage.
-*/
-
-
-/*
-   **Platform Storage**
-
-   see: https://wiki.libsdl.org/SDL3/CategoryStorage
-
-   Many platforms like game platforms do not have a monolithic file storage. They are more strict with what type of filesystem is being accessed; for example, game content and user data are two different storage devices with different characteristics. They also may not all be writeable or accessable directly.
-
-   note: https://partner.steamgames.com/doc/features/cloud
-*/
 PlatformStorage :: struct {
 	title:    ^sdl.Storage,
 	writable: ^sdl.Storage,
@@ -46,32 +22,24 @@ PlatformStorage :: struct {
    All global variables for platform layer should live in this block with a short description of what it is.
 */
 
+
+// -- OPENGL Version -- //
+MAJOR :: 4
+MINOR :: 6
+
+gl_context: sdl.GLContext
+
 window: ^sdl.Window // sdl window
-renderer: ^sdl.Renderer // sdl renderer
+
+renderer: ^Renderer // opengl renderer
 
 platform_config: ^PlatformConfig // config
-
-// gpu
-device: ^sdl.GPUDevice
-formats: sdl.GPUShaderFormat
-
-ShaderData :: struct {
-	shader: ^sdl.GPUShader,
-	state:  ^sdl.GPURenderState,
-}
-
-MAX_SHADER_INFO :: 32
-shader_info: [MAX_SHADER_INFO]^ShaderData
-shader_info_count: int
-
 
 gamepad: ^sdl.Gamepad // for gamepad
 platform_storage: ^PlatformStorage // sdl platform_storage interface
 audio_device: sdl.AudioDeviceID // sdl audio device
 render_cam: ^engine.Camera2D // sdl renderer
-world_texture: int // sdl world texture for scaling and transforming world
 
-current_canvas: ^sdl.Texture
 
 text_buffer: [64]u8 // text buffer for text input not key input
 text_buffer_len: int // text buffer length
@@ -79,13 +47,14 @@ text_buffer_len: int // text buffer length
 MAX_CONCURRENT_AUDIO_STREAMS :: 32
 PLACEHOLDER_TEXTURE_HANDLE :: -1
 
-placeholder_texture: ^sdl.Texture // pointer for placeholder texture
-textures: [dynamic]^sdl.Texture // dynamic array of textures
+placeholder_texture: RendererTexture // pointer for placeholder texture
+textures: [dynamic]RendererTexture // dynamic array of textures
 streams: [MAX_CONCURRENT_AUDIO_STREAMS]^sdl.AudioStream // array of audio streams
 stream_count := 0 // current stream count, could also migrate to dynamic array
 
 // fonts
 fonts: [dynamic]^ttf.Font // dynamic array of ttf fonts
+font_texture_handle: int
 text_engine: ^ttf.TextEngine // pointer to sdl text engine
 
 DEADZONE: f64
@@ -102,6 +71,7 @@ PlatformConfig :: struct {
 	org:           cstring, // for storage api
 	app:           cstring, // for storage api
 	scale_mode:    sdl.ScaleMode,
+	logging_level: engine.LoggerLevels,
 	// allocator
 	_allocator:    mem.Allocator,
 }
@@ -129,7 +99,7 @@ platform_config_new :: proc(
 		panic("Failed to load config, cstring clone allocation failed")
 	}
 
-	flags: sdl.WindowFlags = {.HIGH_PIXEL_DENSITY}
+	flags: sdl.WindowFlags = {.HIGH_PIXEL_DENSITY, .OPENGL}
 	if config.fullscreen {
 		flags += {.FULLSCREEN}
 	}
@@ -146,6 +116,9 @@ platform_config_new :: proc(
 
 	// sdl flags
 	p_config.flags = flags
+
+	// logging level
+	p_config.logging_level = config.logging_level
 
 	// set scale mode
 	switch config.scale_mode {
@@ -175,24 +148,22 @@ platform_config_destroy :: proc(platform_config: ^PlatformConfig) {
 }
 
 
-/*
-   Platform initialisation procedure. It should initialise anything platorm related at startup. This includes window, renderer, audio and input etc. Anything initialised here should be paired with a equivalent destroy proc in `destory`.
-*/
 init :: proc(config: engine.PlatformConfig) {
 	// parse config
 	platform_config = platform_config_new(config)
 
-	// INFO: set log verbosiity, turn off in production, should we write somewhere?
-	sdl.SetLogPriorities(.VERBOSE)
+	init_logger(platform_config.logging_level)
 
 	if (!sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO | sdl.INIT_GAMEPAD)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not be initialised: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not be initialised: %s", sdl.GetError())
 		panic("initialisation error: failed to initialise SDL")
 	}
+
+	// set window hints
+	sdl.GL_SetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, MAJOR)
+	sdl.GL_SetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, MINOR)
+	sdl.GL_SetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, i32(sdl.GL_CONTEXT_PROFILE_CORE))
+	sdl.GL_SetAttribute(sdl.GL_DOUBLEBUFFER, 1)
 
 	window = sdl.CreateWindow(
 		platform_config.title,
@@ -201,109 +172,72 @@ init :: proc(config: engine.PlatformConfig) {
 		platform_config.flags,
 	)
 	if (window == nil) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not be initialised: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not be initialised: %s", sdl.GetError())
 		panic("initialisation error: failed to create window")
 	}
 
 	// blocks until window is set
 	if !sdl.SyncWindow(window) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL failed to sync window: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL failed to sync window: %s", sdl.GetError())
 	}
 
-	// changed render backend to gpu, might want to change back to nil for default choosing
-	renderer = sdl.CreateRenderer(window, "gpu")
-	if (renderer == nil) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not be initialised: %s",
-			sdl.GetError(),
-		)
-		panic("initialisation error: failed to create renderer")
+	gl_context = sdl.GL_CreateContext(window)
+	if gl_context == nil {
+		logger(.ERROR, "SDL failed to create OpenGL Context")
+		panic("SDL failed to create OpenGL Context")
+	}
+	logger(.DEBUG, "SDL Created OpenGL Context")
 
+	if !sdl.GL_MakeCurrent(window, gl_context) {
+		logger(.ERROR, "SDL failed to bind OpenGL Context to window: %s", sdl.GetError())
+		panic("SDL failed to bind OpenGL Context to window")
 	}
 
-	sdl.SetRenderVSync(renderer, 1)
-
-	// set gpu driver formats - vulkan, metal and dx11
-	// basically linux/other, mac and windows
-	formats = {.SPIRV, .MSL, .DXIL}
-	device = sdl.CreateGPUDevice(formats, true, nil)
-	if device == nil {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not be initialised: %s",
-			sdl.GetError(),
-		)
-		panic("initialisation error: failed to create gpu device")
+	// load function pointers
+	gl.load_up_to(MAJOR, MINOR, sdl.gl_set_proc_address)
+	if err := gl.GetError(); err != 0 {
+		logger(.ERROR, "Failed to load function pointers, code: %d", err)
 	}
 
-	formats = sdl.GetGPUShaderFormats(device)
+	// vsync, should allow to customise later
+	sdl.GL_SetSwapInterval(1)
 
-	sdl.LogDebug(
-		cast(i32)sdl.LogCategory.CUSTOM,
-		"Setting scale mode to %d",
-		platform_config.scale_mode,
-	)
-	if !sdl.SetDefaultTextureScaleMode(renderer, platform_config.scale_mode) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL failed to set texture mode to nearest: %s",
-			sdl.GetError(),
-		)
-	}
+	version := gl.GetString(gl.VERSION)
+	logger(.DEBUG, "OpenGL Version: %s", version)
 
+	// renderer
+	renderer = renderer_init()
+
+	// create placeholder texture
+	create_placeholder_texture()
+
+	// create font texture
+	w, h := get_window_size()
+	create_font_texture(w, h)
 
 	// storage
 	platform_storage_init()
 
-	// textures
-	create_placeholder_texture()
-	textures = make([dynamic]^sdl.Texture, 0, 64)
-
-	w, h := get_window_size()
-	world_texture = create_canvas(w, h)
-
 	// audio
 	audio_device = sdl.OpenAudioDevice(sdl.AUDIO_DEVICE_DEFAULT_PLAYBACK, nil)
-	if (audio_device == 0) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"Title storage could not be opened: %s",
-			sdl.GetError(),
-		)
+	if audio_device == 0 {
+		logger(.ERROR, "Title storage could not be opened: %s", sdl.GetError())
 		panic("initialisation error: failed to open audio device")
 	}
 
 	// fonts
 	if !ttf.Init() {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"ttf failed to initialise: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "ttf failed to initialise: %s", sdl.GetError())
 	}
-	fonts = make([dynamic]^ttf.Font, 0, 64)
-	text_engine = ttf.CreateRendererTextEngine(renderer)
+	text_engine = ttf.CreateSurfaceTextEngine()
 
 }
 
 begin_frame :: proc() {}
 
 end_frame :: proc() {
-	if (!sdl.RenderPresent(renderer)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL render present failed: %s",
-			sdl.GetError(),
-		)
+	if !sdl.GL_SwapWindow(window) {
+		logger(.ERROR, "Failed to swap buffers")
 	}
 }
 
@@ -311,293 +245,197 @@ get_page_size :: proc() -> i32 {
 	return sdl.GetSystemPageSize()
 }
 
-@(private)
-shader_select_format :: proc(formats: sdl.GPUShaderFormat) -> sdl.GPUShaderFormat {
-	if .SPIRV in formats {
-		return {.SPIRV}
-	}
-	if .DXIL in formats {
-		return {.DXIL}
-	}
-	if .MSL in formats {
-		return {.MSL}
-	}
-	return {}
-}
 
+// deprecated
+shader_create_info :: proc(shader_create_info: engine.ShaderCreateInfo) -> int {return -1}
 
-shader_create_info :: proc(shader_create_info: engine.ShaderCreateInfo) -> int {
-	if shader_info_count > MAX_SHADER_INFO {
-		return -1
-	}
-
-	stage: sdl.GPUShaderStage
-	switch shader_create_info.stage {
-	case .VERTEX:
-		stage = sdl.GPUShaderStage.VERTEX
-	case .FRAGMENT:
-		stage = sdl.GPUShaderStage.FRAGMENT
-	}
-
-	info_format := shader_select_format(formats)
-
-	code_size: uint
-	code: [^]u8
-	c_entry_point: cstring
-	switch info_format {
-	case {.SPIRV}:
-		code_size = shader_create_info.data.spirv.code_size
-		code = shader_create_info.data.spirv.code
-		c_entry_point = strings.clone_to_cstring(shader_create_info.data.spirv.entry_point)
-	case {.DXIL}:
-		code_size = shader_create_info.data.dxil.code_size
-		code = shader_create_info.data.dxil.code
-		c_entry_point = strings.clone_to_cstring(shader_create_info.data.dxil.entry_point)
-	case {.MSL}:
-		code_size = shader_create_info.data.msl.code_size
-		code = shader_create_info.data.msl.code
-		c_entry_point = strings.clone_to_cstring(shader_create_info.data.msl.entry_point)
-	case {}:
-		return -1
-	}
-	defer delete(c_entry_point)
-
-	info := sdl.GPUShaderCreateInfo {
-		code_size           = code_size,
-		code                = code,
-		entrypoint          = c_entry_point,
-		format              = info_format,
-		stage               = stage,
-		num_samplers        = shader_create_info.num_samplers,
-		num_storage_buffers = shader_create_info.num_storage_buffers,
-		num_uniform_buffers = shader_create_info.num_uniform_buffers,
-		props               = 0,
-	}
-
-	shader := sdl.CreateGPUShader(device, info)
-
-	render_state_create: sdl.GPURenderStateCreateInfo
-	render_state_create.fragment_shader = shader
-
-	state := sdl.CreateGPURenderState(renderer, render_state_create)
-
-	shader_data := new(ShaderData, context.allocator)
-	shader_data.shader = shader
-	shader_data.state = state
-
-	shader_info[shader_info_count] = shader_data
-	shader_info_count += 1
-	return shader_info_count
-}
-
+// deprecated
 set_gpu_fragment_shader_uniforms :: proc(
 	shader: int,
 	slot: u32,
 	uniform: rawptr,
 	uniform_length: u32,
 ) {
-	if shader > shader_info_count {
-		return
-	}
-	data := shader_info[shader - 1]
-	if !sdl.SetGPURenderStateFragmentUniforms(data.state, slot, uniform, uniform_length) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL render failed to set fragment uniform: %s",
-			sdl.GetError(),
-		)
-	}
 }
 
-destroy_all_shaders :: proc() {
-	for s in shader_info {
-		if s == nil do continue
-		sdl.DestroyGPURenderState(s.state)
-		sdl.ReleaseGPUShader(device, s.shader)
-		free(s)
-	}
-}
+destroy_all_shaders :: proc() {}
 
 
-// i want to be able to push and pop multiple shaders at once
-// i was thinking of a stack data structure and the top shader is
-// the current and when you pop you get the next one below it. Allowing the
-// shader state to continue. The issue is now that if you push a shader in the
-// middle it will wipe shader state going ahead.
-push_shader_state :: proc(shader: int) {
-	if shader > shader_info_count {
-		return
-	}
-	handle := shader_info[shader - 1]
-	if !sdl.SetGPURenderState(renderer, handle.state) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL push render shader state failed: %s",
-			sdl.GetError(),
-		)
-	}
-}
+push_shader_state :: proc(shader: int) {}
 
-pop_shader_state :: proc() {
-	if !sdl.SetGPURenderState(renderer, nil) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL pop render shader state failed: %s",
-			sdl.GetError(),
-		)
-	}
-}
+pop_shader_state :: proc() {}
 
 clear_screen :: proc(color: engine.Color) {
-	if (!sdl.SetRenderDrawColorFloat(
-			   renderer,
-			   f32(color.r) / 255.0,
-			   f32(color.g) / 255.0,
-			   f32(color.b) / 255.0,
-			   f32(color.a) / 255.0,
-		   )) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL set render draw color failed: %s",
-			sdl.GetError(),
-		)
-		return
-	}
-	if (!sdl.RenderClear(renderer)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL render clear failed: %s",
-			sdl.GetError(),
-		)
-	}
+	gl_color := engine_color_to_gl_color(color)
+	gl.ClearColor(gl_color.r, gl_color.g, gl_color.b, gl_color.a)
+	gl.Clear(gl.COLOR_BUFFER_BIT)
 }
 
-draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
-	center_x, center_y, trans_scale := camera_translation_position(
-		circle.position.x,
-		circle.position.y,
-		1.0,
-	)
-
-	cx := f32(center_x)
-	cy := f32(center_y)
-	radius := circle.radius * trans_scale
-
-	verts: [NUM_CIRCLE_SEGMENTS + 1]sdl.Vertex
-	indices: [NUM_CIRCLE_SEGMENTS * 3]i32
-
-	fcolor := sdl.FColor {
-		f32(color.r) / 255.0,
-		f32(color.g) / 255.0,
-		f32(color.b) / 255.0,
-		f32(color.a) / 255.0,
-	}
-
-	verts[0].position = sdl.FPoint{cx, cy}
-	verts[0].color = fcolor
-
-	for i in 0 ..< NUM_CIRCLE_SEGMENTS {
-		angle := f32(i) / NUM_CIRCLE_SEGMENTS * 2 * math.PI
-		verts[i + 1].position = sdl.FPoint {
-			cx + math.cos(angle) * f32(radius),
-			cy + math.sin(angle) * f32(radius),
-		}
-		verts[i + 1].color = fcolor
-
-		indices[i * 3 + 0] = 0
-		indices[i * 3 + 1] = i32(i + 1)
-		indices[i * 3 + 2] = i32((i + 1) % NUM_CIRCLE_SEGMENTS + 1)
-	}
-
-	sdl.RenderGeometry(
-		renderer,
-		nil,
-		raw_data(verts[:]),
-		NUM_CIRCLE_SEGMENTS + 1,
-		raw_data(indices[:]),
-		NUM_CIRCLE_SEGMENTS * 3,
-	)
-}
+draw_circle :: proc(circle: engine.Circle, color: engine.Color) {}
 
 draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
+	gl_color := engine_color_to_gl_color(color)
 
-	trans_x, trans_y, trans_scale := camera_translation_position(rect.x, rect.y, 1.0)
+	t_x, t_y, t_s := camera_translation_position(rect.x, rect.y, 1)
 
-	square := sdl.FRect {
-		x = f32(trans_x),
-		y = f32(trans_y),
-		w = f32(rect.width * trans_scale),
-		h = f32(rect.height * trans_scale),
+	renderer_push_vertex(
+		renderer,
+		{0, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{0, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{0, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	defer renderer_clear_vertices(renderer)
+
+	projection_location := gl.GetUniformLocation(
+		renderer.shader_pipeline.vertex_shader,
+		"vProjection",
+	)
+	if projection_location < 0 {
+		logger(.ERROR, "Failed to find location")
+		return
 	}
-	set_renderer_draw_color(renderer, color.r, color.g, color.b, color.a)
-	sdl.RenderFillRect(renderer, &square)
+
+	gl.BindTextureUnit(0, placeholder_texture.target)
+
+	transformation := renderer_get_transformation_matrix(
+		renderer^,
+		t_x,
+		t_y,
+		rect.width,
+		rect.height,
+		t_s,
+	)
+	gl.ProgramUniformMatrix4fv(
+		renderer.shader_pipeline.vertex_shader,
+		projection_location,
+		1,
+		gl.FALSE,
+		&transformation[0][0],
+	)
+
+	gl.BindVertexArray(renderer.vao)
+	gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo)
+	gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		0,
+		renderer.vertices_count * size_of(RendererVertex),
+		&renderer.vertices_data,
+	)
+	gl.DrawArrays(gl.TRIANGLES, 0, i32(renderer.vertices_count))
 }
 
 draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 
-	trans_x, trans_y, trans_scale := camera_translation_position(rect.x, rect.y, 1.0)
+	gl_color := engine_color_to_gl_color(color)
+	t_x, t_y, t_s := camera_translation_position(rect.x, rect.y, 1)
 
-	square := sdl.FRect {
-		x = f32(trans_x),
-		y = f32(trans_y),
-		w = f32(rect.width * trans_scale),
-		h = f32(rect.height * trans_scale),
+	renderer_push_vertex(
+		renderer,
+		{0, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{0, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	defer renderer_clear_vertices(renderer)
+
+	projection_location := gl.GetUniformLocation(
+		renderer.shader_pipeline.vertex_shader,
+		"vProjection",
+	)
+	if projection_location < 0 {
+		logger(.ERROR, "Failed to find location")
+		return
 	}
-	set_renderer_draw_color(renderer, color.r, color.g, color.b, color.a)
-	sdl.RenderRect(renderer, &square)
+	gl.BindTextureUnit(0, placeholder_texture.target)
+
+	transformation := renderer_get_transformation_matrix(
+		renderer^,
+		t_x,
+		t_y,
+		rect.width,
+		rect.height,
+		t_s,
+	)
+	gl.ProgramUniformMatrix4fv(
+		renderer.shader_pipeline.vertex_shader,
+		projection_location,
+		1,
+		gl.FALSE,
+		&transformation[0][0],
+	)
+
+	gl.BindVertexArray(renderer.vao)
+	gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo)
+	gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		0,
+		renderer.vertices_count * size_of(RendererVertex),
+		&renderer.vertices_data,
+	)
+
+	// set to line mode then reset back to fill
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	defer gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
+
+	gl.DrawArrays(gl.LINE_LOOP, 0, i32(renderer.vertices_count))
 }
 
 draw_arc :: proc(
 	center: engine.Vector2,
 	radius, start_angle, end_angle, thickness: f32,
 	color: engine.Color,
-) {
+) {}
 
-	@(static) buffer: [255]sdl.FPoint
+set_clip_rect :: proc(rect: engine.Rect) {}
 
-	set_renderer_draw_color(renderer, color.r, color.g, color.b, color.a)
-
-	trans_x, trans_y, _ := camera_translation_position(center.x, center.y, 1.0)
-
-	rad_start := start_angle * (math.PI / 180.0)
-	rad_end := end_angle * (math.PI / 180.0)
-
-	n_circle_segments := math.max(NUM_CIRCLE_SEGMENTS, int(radius * 1.5))
-	assert(n_circle_segments < 255)
-
-	angle_step := (rad_end - rad_start) / f32(n_circle_segments)
-	thickness_step: f32 = 0.4
-
-	for t := thickness_step; t < thickness - thickness_step; t += thickness_step {
-		points: [^]sdl.FPoint = &buffer[0]
-		clamped_radius := math.max(radius - t, 1.0)
-
-		for i := 0; i <= int(n_circle_segments); i += 1 {
-			angle := rad_start + f32(i) * angle_step
-			points[i] = sdl.FPoint {
-				f32(sdl.round(trans_x)) + sdl.cosf(angle) * clamped_radius,
-				f32(sdl.round(trans_y)) + sdl.sinf(angle) * clamped_radius,
-			}
-
-		}
-		sdl.RenderLines(renderer, points, c.int(n_circle_segments + 1))
-	}
-}
-
-set_clip_rect :: proc(rect: engine.Rect) {
-	trans_x, trans_y, trans_scale := camera_translation_position(rect.x, rect.y, 1.0)
-	clipping_rect := sdl.Rect {
-		x = c.int(trans_x),
-		y = c.int(trans_y),
-		w = c.int(rect.width * trans_scale),
-		h = c.int(rect.height * trans_scale),
-	}
-	sdl.SetRenderClipRect(renderer, &clipping_rect)
-}
-
-end_clip_rect :: proc() {
-	sdl.SetRenderClipRect(renderer, nil)
-}
+end_clip_rect :: proc() {}
 
 // NOTE: i added stretch_x and stretch_y so that you can flex and fit tiles together
 // i.e. 9 slice fitting in the clay renderer. im not too sure if i like the
@@ -614,58 +452,97 @@ draw_sprite :: proc(
 	flip_x, flip_y: bool,
 	stretch_x, stretch_y: int,
 ) {
-	texture: ^sdl.Texture
-	if (texture_handle != PLACEHOLDER_TEXTURE_HANDLE) {
-		if texture_handle > len(textures) - 1 {
-			sdl.LogError(
-				cast(i32)sdl.LogCategory.CUSTOM,
-				"proc draw_sprite tried to index > len(textures): index: %d, len: %d",
-				texture_handle,
-				len(textures),
-			)
-			return
-		}
-		texture = textures[texture_handle]
-		sdl.SetTextureColorModFloat(
-			texture,
-			f32(color.r) / 255.0,
-			f32(color.g) / 255.0,
-			f32(color.b) / 255.0,
-		)
-		sdl.SetTextureAlphaModFloat(texture, f32(color.a) / 255.0)
-	} else {
-		texture = placeholder_texture
+	gl_color := engine_color_to_gl_color(color)
+	texture := textures[texture_handle]
+
+	t_x, t_y, t_s := camera_translation_position(position.x, position.y, scale)
+
+	// calculate relative position
+	u0 := f32(texture_rect.x / f64(texture.width))
+	v0 := f32(texture_rect.y / f64(texture.height))
+	u1 := f32((texture_rect.x + texture_rect.width) / f64(texture.width))
+	v1 := f32((texture_rect.y + texture_rect.height) / f64(texture.height))
+
+	// push vertices
+	renderer_push_vertex(
+		renderer,
+		{0, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{u0, v0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{0, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{u0, v1},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{u1, v0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{u1, v0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{1, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{u1, v1},
+	)
+	renderer_push_vertex(
+		renderer,
+		{0, -1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{u0, v1},
+	)
+	defer renderer_clear_vertices(renderer)
+
+	projection_location := gl.GetUniformLocation(
+		renderer.shader_pipeline.vertex_shader,
+		"vProjection",
+	)
+	if projection_location < 0 {
+		logger(.ERROR, "Failed to find location")
+		return
 	}
 
+	gl.BindTextureUnit(0, texture.target)
 
-	flip := sdl.FlipMode.NONE
-	if flip_x do flip |= sdl.FlipMode.HORIZONTAL
-	if flip_y do flip |= sdl.FlipMode.VERTICAL
-
-	// translate camera position
-	// keeping x, y and zoom translation on the sprite layer
-	// rotation will be done on the world texture
-	trans_x, trans_y, trans_scale := camera_translation_position(position.x, position.y, scale)
-
-	sdl.RenderTextureRotated(
-		renderer,
-		texture,
-		&sdl.FRect {
-			x = f32(texture_rect.x),
-			y = f32(texture_rect.y),
-			w = f32(texture_rect.width),
-			h = f32(texture_rect.height),
-		},
-		&sdl.FRect {
-			x = f32(trans_x - texture_rect.width * trans_scale * pivot.x),
-			y = f32(trans_y - texture_rect.height * trans_scale * pivot.y),
-			w = f32((texture_rect.width + f64(stretch_x)) * trans_scale),
-			h = f32((texture_rect.height + f64(stretch_y)) * trans_scale),
-		},
-		f64(rotation),
-		nil,
-		flip,
+	transformation := renderer_get_transformation_matrix(
+		renderer^,
+		t_x,
+		t_y,
+		texture_rect.width,
+		texture_rect.height,
+		t_s,
+		0,
+		flip_x,
+		flip_y,
+		f64(stretch_x),
+		f64(stretch_y),
 	)
+	gl.ProgramUniformMatrix4fv(
+		renderer.shader_pipeline.vertex_shader,
+		projection_location,
+		1,
+		gl.FALSE,
+		&transformation[0][0],
+	)
+
+	gl.BindVertexArray(renderer.vao)
+	gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo)
+	gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		0,
+		renderer.vertices_count * size_of(RendererVertex),
+		&renderer.vertices_data,
+	)
+	gl.DrawArrays(gl.TRIANGLES, 0, i32(renderer.vertices_count))
 
 }
 
@@ -680,77 +557,63 @@ measure_text :: proc(font_handle: int, text: string) -> (width: int, height: int
 
 draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, color: engine.Color) {
 
-	trans_x, trans_y, _ := camera_translation_position(position.x, position.y, 1.0)
-
 	font := fonts[font_handle]
+	font_texture := textures[font_texture_handle]
 
-	text := ttf.CreateText(text_engine, font, raw_data(text), 0)
-	defer ttf.DestroyText(text)
-	ttf.SetTextColorFloat(
-		text,
-		f32(color.r) / 255,
-		f32(color.g) / 255,
-		f32(color.b) / 255,
-		f32(color.a) / 255,
+	text_surface := ttf.RenderText_Blended_Wrapped(
+		font,
+		raw_data(text),
+		len(text),
+		{color.r, color.g, color.b, color.a},
+		0,
 	)
-	ttf.DrawRendererText(text, f32(trans_x), f32(trans_y))
+	defer sdl.DestroySurface(text_surface)
+
+	conv_surface := sdl.ConvertSurface(text_surface, sdl.PixelFormat.RGBA32)
+	defer sdl.DestroySurface(conv_surface)
+
+	font_texture_resize(int(conv_surface.w), int(conv_surface.h))
+	gl.TextureSubImage2D(
+		font_texture.target,
+		0,
+		0,
+		0,
+		conv_surface.w,
+		conv_surface.h,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		conv_surface.pixels,
+	)
+	gl.GenerateTextureMipmap(font_texture.target)
+
+	textures[font_texture_handle].width = int(conv_surface.w)
+	textures[font_texture_handle].height = int(conv_surface.h)
+
+	draw_sprite(
+		position,
+		1,
+		0,
+		engine.vector2(0, 0),
+		font_texture_handle,
+		engine.rect(0, 0, f64(conv_surface.w), f64(conv_surface.h)),
+		engine.WHITE,
+		false,
+		false,
+		0,
+		0,
+	)
 }
 
 
-draw_debug_text :: proc(position: engine.Vector2, text: string, scale: f32, color: engine.Color) {
-
-	ctext := strings.clone_to_cstring(text)
-	defer delete(ctext)
-
-	sdl.SetRenderScale(renderer, scale, scale)
-	set_renderer_draw_color(renderer, color.r, color.g, color.b, color.a)
-	sdl.RenderDebugText(renderer, f32(position.x) / scale, f32(position.y) / scale, ctext)
-	sdl.SetRenderScale(renderer, 1, 1) // reset render
-}
+draw_debug_text :: proc(position: engine.Vector2, text: string, scale: f32, color: engine.Color) {}
 
 attach_camera :: proc(cam: ^engine.Camera2D) {
-	canvas := safe_get_texture(world_texture)
 	render_cam = cam
-	sdl.SetRenderTarget(renderer, canvas)
-	sdl.RenderClear(renderer)
 }
 
 detach_camera :: proc() {
-	canvas := safe_get_texture(world_texture)
-	sdl.SetRenderTarget(renderer, nil)
-	sdl.RenderClear(renderer)
-	defer render_cam = nil
-
-	w, h := get_window_size()
-	dst := sdl.FRect {
-		x = 0,
-		y = 0,
-		w = f32(w),
-		h = f32(h),
-	}
-	center := engine.vector2(f64(w) / 2, f64(h) / 2)
-	sdl.RenderTextureRotated(
-		renderer,
-		canvas,
-		nil,
-		&dst,
-		f64(render_cam.rotation),
-		&sdl.FPoint{f32(center.x), f32(center.y)},
-		sdl.FlipMode.NONE,
-	)
+	render_cam = nil
 }
-
-set_renderer_draw_color :: proc(renderer: ^sdl.Renderer, r, g, b, a: u8) -> bool {
-	return sdl.SetRenderDrawColorFloat(
-		renderer,
-		f32(r) / 255.0,
-		f32(g) / 255.0,
-		f32(b) / 255.0,
-		f32(a) / 255.0,
-	)
-
-}
-
 
 get_performance_frequency :: proc() -> u64 {
 	return sdl.GetPerformanceFrequency()
@@ -766,11 +629,7 @@ get_performance_counter :: proc() -> u64 {
 get_file_size :: proc(path: cstring) -> int {
 	outSize: u64
 	if (!sdl.GetStorageFileSize(platform_storage.title, path, &outSize)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"failed to get file size: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "failed to get file size: %s", sdl.GetError())
 		return 0
 	}
 	return cast(int)outSize
@@ -779,12 +638,7 @@ get_file_size :: proc(path: cstring) -> int {
 // loads contents of the file into the user provided buffer
 load_file :: proc(path: cstring, buffer: rawptr, size: int) -> bool {
 	if (!sdl.ReadStorageFile(platform_storage.title, path, buffer, cast(u64)size)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"failed to read file at %s: %s",
-			path,
-			sdl.GetError(),
-		)
+		logger(.ERROR, "failed to read file at %s: %s", path, sdl.GetError())
 		return false
 	}
 	return true
@@ -799,12 +653,7 @@ write_file :: proc(path: string, buffer: rawptr, size: int, storage: engine.Stor
 	defer platform_storage_destroy_writer()
 
 	if !sdl.WriteStorageFile(platform_storage.writable, cpath, buffer, cast(u64)size) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"failed to write file at %s: %s",
-			cpath,
-			sdl.GetError(),
-		)
+		logger(.ERROR, "failed to write file at %s: %s", cpath, sdl.GetError())
 		return false
 	}
 	return true
@@ -812,237 +661,102 @@ write_file :: proc(path: string, buffer: rawptr, size: int, storage: engine.Stor
 
 // create_canvas creates a blank texture onto which you can render onto
 // it will be destoryed at shutdown with destory_all_textures
-create_canvas :: proc(width: int, height: int) -> int {
-	// Size the world texture to the real backing pixel size of the window
-	// (not the WINDOW_WIDTH/HEIGHT points), so it matches the camera offset
-	// computed from get_window_size() and blits 1:1 to the screen.
-	texture := sdl.CreateTexture(
-		renderer,
-		sdl.PixelFormat.RGBA8888,
-		sdl.TextureAccess.TARGET,
-		i32(width),
-		i32(height),
-	)
-
-	if (texture == nil) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"could not create texture %s",
-			sdl.GetError(),
-		)
-		panic("failed to load texture")
-	}
-	if (!sdl.SetTextureBlendMode(texture, sdl.BLENDMODE_BLEND_PREMULTIPLIED)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"could not set texture blend mode %s",
-			sdl.GetError(),
-		)
-		panic("failed to load texture")
-	}
-
-	// set scale mode to pixel art or nearest if using pixel art
-	if (!sdl.SetTextureScaleMode(texture, sdl.ScaleMode.NEAREST)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"could not set texture scale mode %s",
-			sdl.GetError(),
-		)
-		panic("failed to load texture")
-	}
-	append(&textures, texture)
-	return len(textures) - 1
-}
+create_canvas :: proc(width: int, height: int) -> int {return -1}
 
 
-push_canvas :: proc(canvas: int) {
-	current_canvas = safe_get_texture(canvas)
-	if !sdl.SetRenderTarget(renderer, current_canvas) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"could not set texture render target %s",
-			sdl.GetError(),
-		)
-	}
-	sdl.RenderClear(renderer)
-}
+push_canvas :: proc(canvas: int) {}
 
-pop_canvas :: proc() {
-	sdl.SetRenderTarget(renderer, nil)
-	sdl.RenderClear(renderer)
-	defer current_canvas = nil
-
-	w, h := get_window_size()
-	dst := sdl.FRect {
-		x = 0,
-		y = 0,
-		w = f32(w),
-		h = f32(h),
-	}
-	center := engine.vector2(f64(w) / 2, f64(h) / 2)
-	sdl.RenderTextureRotated(
-		renderer,
-		current_canvas,
-		nil,
-		&dst,
-		0,
-		&sdl.FPoint{f32(center.x), f32(center.y)},
-		sdl.FlipMode.NONE,
-	)
-}
+pop_canvas :: proc() {}
 
 
 create_placeholder_texture :: proc() {
-	placeholder_texture = sdl.CreateTexture(
-		renderer,
-		sdl.PixelFormat.RGBA32,
-		sdl.TextureAccess.TARGET,
-		32,
-		32,
+	target: u32
+	width: i32 = 1
+	height: i32 = 1
+	image := []u8{255, 255, 255, 255}
+	gl.CreateTextures(gl.TEXTURE_2D, 1, &target)
+
+	gl.TextureParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TextureParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+
+	gl.TextureStorage2D(target, 1, gl.RGB8, i32(width), i32(height))
+	gl.TextureSubImage2D(
+		target,
+		0,
+		0,
+		0,
+		i32(width),
+		i32(height),
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		&image[0],
 	)
-
-	if (placeholder_texture == nil) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"could not create texture %s",
-			sdl.GetError(),
-		)
-		panic("failed to load texture")
+	placeholder_texture = RendererTexture {
+		target   = target,
+		width    = int(width),
+		height   = int(height),
+		channels = 4,
+		bpp      = 0,
 	}
-
-	if (!sdl.SetTextureBlendMode(placeholder_texture, sdl.BLENDMODE_BLEND_PREMULTIPLIED)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"could not set texture blend mode %s",
-			sdl.GetError(),
-		)
-		panic("failed to load texture")
-	}
-
-	if (!sdl.SetTextureScaleMode(placeholder_texture, platform_config.scale_mode)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"could not set texture scale mode %s",
-			sdl.GetError(),
-		)
-		panic("failed to load texture")
-	}
-
-	if (!sdl.SetRenderTarget(renderer, placeholder_texture)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"could not set texture render target %s",
-			sdl.GetError(),
-		)
-		panic("failed to load texture")
-	}
-
-	if (!set_renderer_draw_color(renderer, 0, 0, 0, 255)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"could not set texture render draw color %s",
-			sdl.GetError(),
-		)
-		panic("failed to load texture")
-	}
-
-	if (!sdl.RenderClear(renderer)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"could not clear renderer %s",
-			sdl.GetError(),
-		)
-		panic("failed to load texture")
-	}
-
-	if (!set_renderer_draw_color(renderer, 255, 0, 255, 255)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"could not set draw color %s",
-			sdl.GetError(),
-		)
-		panic("failed to load texture")
-	}
-
-	if (!sdl.RenderFillRect(renderer, &sdl.FRect{x = 0, y = 0, w = 16, h = 16})) {
-		sdl.LogError(cast(i32)sdl.LogCategory.CUSTOM, "could not fill rect %s", sdl.GetError())
-		panic("failed to load texture")
-	}
-
-	if (!sdl.SetRenderTarget(renderer, nil)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"could not set renderer target %s",
-			sdl.GetError(),
-		)
-		panic("failed to load texture")
-	}
-
-
+	logger(.DEBUG, "Created placeholder texture")
 }
 
+initialise_texture_target :: proc(target: ^u32, width, height: int) {
+	gl.CreateTextures(gl.TEXTURE_2D, 1, target)
+
+	gl.TextureParameteri(target^, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(target^, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(target^, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TextureParameteri(target^, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+
+	gl.TextureStorage2D(target^, 1, gl.RGBA8, i32(width), i32(height))
+	gl.GenerateTextureMipmap(target^)
+}
+
+create_font_texture :: proc(width, height: int) {
+	target: u32
+	initialise_texture_target(&target, width, height)
+	append(
+		&textures,
+		RendererTexture{target = target, width = width, height = height, channels = 4, bpp = 0},
+	)
+	font_texture_handle = len(textures) - 1
+}
+
+font_texture_resize :: proc(width, height: int) {
+	font_texture := textures[font_texture_handle]
+	gl.DeleteTextures(1, &font_texture.target)
+	initialise_texture_target(&font_texture.target, width, height)
+}
 
 create_texture :: proc(width, height, channels, bpp: int, data: ^u32) -> int {
-	texture: ^sdl.Texture
-	if (data != nil) {
-		texture = sdl.CreateTexture(
-			renderer,
-			channels == 4 ? sdl.PixelFormat.RGBA32 : sdl.PixelFormat.RGB24,
-			sdl.TextureAccess.STREAMING,
-			cast(i32)width,
-			cast(i32)height,
-		)
-		if (texture == nil) {
-			sdl.LogError(
-				cast(i32)sdl.LogCategory.CUSTOM,
-				"failed to read file at %s: %s",
-				sdl.GetError(),
-			)
-			return PLACEHOLDER_TEXTURE_HANDLE
-		}
-		pitch := width * bpp
-		if (!sdl.UpdateTexture(texture, nil, data, cast(i32)pitch)) {
-			sdl.LogError(
-				cast(i32)sdl.LogCategory.CUSTOM,
-				"Could not update texture %s",
-				sdl.GetError(),
-			)
-			return PLACEHOLDER_TEXTURE_HANDLE
-		}
-		if texture.format == sdl.PixelFormat.RGBA32 {
-			if (!sdl.SetTextureBlendMode(texture, sdl.BLENDMODE_BLEND)) {
-				sdl.LogError(
-					cast(i32)sdl.LogCategory.CUSTOM,
-					"Could not set texture blend mode %s",
-					sdl.GetError(),
-				)
-			}
-		}
+	target: u32
+	gl.CreateTextures(gl.TEXTURE_2D, 1, &target)
 
-		if (!sdl.SetTextureScaleMode(texture, sdl.ScaleMode.NEAREST)) {
-			sdl.LogError(
-				cast(i32)sdl.LogCategory.CUSTOM,
-				"Could not set texture scale mode %s",
-				sdl.GetError(),
-			)
-		}
+	gl.TextureParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TextureParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 
-		append(&textures, texture)
-		return len(textures) - 1
+	internal_format := (channels == 4 ? gl.RGBA8 : gl.RGB8)
+	gl.TextureStorage2D(target, 1, u32(internal_format), i32(width), i32(height))
+	gl.TextureSubImage2D(target, 0, 0, 0, i32(width), i32(height), gl.RGBA, gl.UNSIGNED_BYTE, data)
+	logger(.DEBUG, "Texture created")
+	gl.GenerateTextureMipmap(target)
 
-	} else {
-		sdl.LogError(cast(i32)sdl.LogCategory.CUSTOM, "using placeholder texture")
-		return PLACEHOLDER_TEXTURE_HANDLE
-	}
-}
-
-// safely get texture from texture handle
-@(private)
-safe_get_texture :: #force_inline proc(handle: int) -> ^sdl.Texture {
-	assert(textures != nil, "texture array is nil")
-	assert(handle >= 0, "texture handle must be positive")
-	assert(handle < len(textures), "texture handle must be in range of len(textures)")
-	return textures[handle]
+	append(
+		&textures,
+		RendererTexture {
+			target = target,
+			channels = channels,
+			bpp = bpp,
+			width = width,
+			height = height,
+		},
+	)
+	return len(textures) - 1
 }
 
 
@@ -1050,11 +764,11 @@ safe_get_texture :: #force_inline proc(handle: int) -> ^sdl.Texture {
 	 Destroys all textures, should always be called as a placeholder is created in the init procedure.
 */
 destroy_all_textures :: proc() {
-	for tex in textures {
-		sdl.DestroyTexture(tex)
+	gl.DeleteTextures(1, &placeholder_texture.target)
+	for &texture in textures {
+		gl.DeleteTextures(1, &texture.target)
 	}
 	delete(textures)
-	sdl.DestroyTexture(placeholder_texture)
 }
 
 destroy_all_fonts :: proc() {
@@ -1067,7 +781,7 @@ destroy_all_fonts :: proc() {
 
 shutdown :: proc() {
 
-	sdl.LogInfo(cast(i32)sdl.LogCategory.APPLICATION, "Shutting down...")
+	logger(.DEBUG, "Shutting down...")
 	if (gamepad != nil) {
 		sdl.CloseGamepad(gamepad)
 		gamepad = nil
@@ -1079,21 +793,23 @@ shutdown :: proc() {
 	// destory fonts
 	destroy_all_fonts()
 
-
 	// shutdown audio
 	sdl.CloseAudioDevice(audio_device)
 
 	// shutdown fonts
-	ttf.DestroyRendererTextEngine(text_engine)
+	ttf.DestroySurfaceTextEngine(text_engine)
 	ttf.Quit()
 
 	// platform
 	platform_storage_destroy()
 	platform_config_destroy(platform_config)
 
+	// renderer
+	renderer_destroy(renderer)
 
-	sdl.DestroyGPUDevice(device)
-	sdl.DestroyRenderer(renderer)
+	// gl context
+	sdl.GL_DestroyContext(gl_context)
+
 	sdl.DestroyWindow(window)
 	sdl.Quit()
 }
@@ -1102,11 +818,8 @@ shutdown :: proc() {
 get_window_size :: #force_inline proc() -> (int, int) {
 	w, h: i32
 	if (!sdl.GetWindowSizeInPixels(window, &w, &h)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"failed to get window size %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "failed to get window size %s", sdl.GetError())
+		return 0, 0
 	}
 	return int(w), int(h)
 }
@@ -1114,19 +827,10 @@ get_window_size :: #force_inline proc() -> (int, int) {
 // get_render_size returns the pixels size of the renderer context
 // note: should be the same as sdl.GetWindowSizeInPixels
 get_render_size :: proc() -> (int, int) {
-	w, h: i32
-	if (!sdl.GetRenderOutputSize(renderer, &w, &h)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"failed to get renderer size %s",
-			sdl.GetError(),
-		)
-	}
-	return int(w), int(h)
+	return get_window_size()
 }
 
 // input
-
 sdl_mouse_mapping :: [?]int {
 	sdl.BUTTON_LEFT   = int(engine.InputType.INPUT_MOUSE_BUTTON_LEFT),
 	sdl.BUTTON_MIDDLE = int(engine.InputType.INPUT_MOUSE_BUTTON_MIDDLE),
@@ -1227,19 +931,13 @@ update_input :: proc(input: ^engine.GameInput) {
 			if (gamepad == nil) {
 				gamepad = sdl.OpenGamepad(evt.gdevice.which)
 				if (gamepad == nil) {
-					sdl.LogError(
-						cast(i32)sdl.LogCategory.CUSTOM,
-						"SDL could not open gamepad: %s",
-						sdl.GetError(),
-					)
-
+					logger(.ERROR, "SDL could not open gamepad: %s", sdl.GetError())
 				}
 			}
 		} else if (evt.type == sdl.EventType.GAMEPAD_REMOVED) {
 			if (gamepad != nil && sdl.GetGamepadID(gamepad) == evt.gdevice.which) {
 				sdl.CloseGamepad(gamepad)
 				gamepad = nil
-
 			}
 
 		} else if (evt.type == sdl.EventType.GAMEPAD_BUTTON_DOWN ||
@@ -1318,11 +1016,7 @@ set_half_axis_state :: proc(
 gamepad_rumble :: proc(low_frequency_rumble: u16, high_frequency_rumble: u16, duration_ms: u32) {
 	if gamepad == nil do return
 	if !sdl.RumbleGamepad(gamepad, low_frequency_rumble, high_frequency_rumble, duration_ms) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL failed to rumble gamepad: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL failed to rumble gamepad: %s", sdl.GetError())
 	}
 }
 
@@ -1338,11 +1032,7 @@ load_sound :: proc(
 	spec: sdl.AudioSpec
 	io: ^sdl.IOStream = sdl.IOFromMem(data, uint(length))
 	if (!sdl.LoadWAV_IO(io, true, &spec, out_buffer, out_length)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not load wav data: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not load wav data: %s", sdl.GetError())
 		return false
 	}
 
@@ -1397,29 +1087,18 @@ set_sound_volume :: proc(handle: int, volume: f64) -> bool {
 @(private)
 create_and_bind_stream :: proc(spec: ^sdl.AudioSpec) -> ^sdl.AudioStream {
 	if (stream_count >= MAX_CONCURRENT_AUDIO_STREAMS) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not play sound: all audio streams in use",
-		)
+		logger(.ERROR, "SDL could not play sound: all audio streams in use")
 		return nil
 	}
 
 	new_stream := sdl.CreateAudioStream(spec, nil)
 	if new_stream == nil {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not create new stream: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not create new stream: %s", sdl.GetError())
 		return nil
 	}
 
 	if !sdl.BindAudioStream(audio_device, new_stream) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not create new stream: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not create new stream: %s", sdl.GetError())
 		return nil
 	}
 	return new_stream
@@ -1428,18 +1107,10 @@ create_and_bind_stream :: proc(spec: ^sdl.AudioSpec) -> ^sdl.AudioStream {
 // set existing audio stream
 set_audio_stream :: proc(stream: ^sdl.AudioStream, data: rawptr, length: int, volume: f64) {
 	if !sdl.SetAudioStreamGain(stream, f32(volume)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not set audio stream grain: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not set audio stream grain: %s", sdl.GetError())
 	}
 	if !sdl.PutAudioStreamData(stream, data, i32(length)) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not put audio stream data: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not put audio stream data: %s", sdl.GetError())
 	}
 }
 
@@ -1503,11 +1174,8 @@ load_font :: proc(path: string, size: f32) -> int {
 	defer delete(cpath)
 	font := ttf.OpenFont(cpath, size)
 	if font == nil {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not load font: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "SDL could not load font: %s", sdl.GetError())
+		return -1
 	}
 	append(&fonts, font)
 	return len(fonts) - 1
@@ -1531,32 +1199,11 @@ camera_translation_position :: proc(x, y, scale: f64) -> (f64, f64, f64) {
    Platform Logger
 */
 
-// for now lets do a simple logger, just debug level
-logger :: proc(msg: string, args: ..any) {
-	cmessage := fmt.ctprintf(msg, ..args)
-	sdl.LogDebug(cast(i32)sdl.LogCategory.CUSTOM, cmessage)
-}
 
 // text input
-start_text_input :: proc() {
-	if !sdl.StartTextInput(window) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not start text input: %s",
-			sdl.GetError(),
-		)
-	}
-}
+start_text_input :: proc() {}
 
-stop_text_input :: proc() {
-	if !sdl.StopTextInput(window) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"SDL could not start text input: %s",
-			sdl.GetError(),
-		)
-	}
-}
+stop_text_input :: proc() {}
 
 get_text_input_buffer :: proc() -> ([64]u8, int) {
 	return text_buffer, text_buffer_len
@@ -1567,11 +1214,7 @@ platform_storage_init :: proc() {
 	platform_storage = new(PlatformStorage, context.allocator)
 	platform_storage.title = sdl.OpenTitleStorage(nil, 0)
 	if (platform_storage.title == nil) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"Title storage could not be opened: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "Title storage could not be opened: %s", sdl.GetError())
 		panic("initialisation error: failed to open title storage")
 	}
 	for !sdl.StorageReady(platform_storage.title) do sdl.Delay(1)
@@ -1580,8 +1223,8 @@ platform_storage_init :: proc() {
 
 platform_storage_destroy :: proc() {
 	ok := sdl.CloseStorage(platform_storage.title)
-	if (!ok) {
-		sdl.LogError(cast(i32)sdl.LogCategory.CUSTOM, "failed to close storage %s", sdl.GetError())
+	if !ok {
+		logger(.ERROR, "failed to close storage %s", sdl.GetError())
 	}
 	platform_storage_destroy_writer()
 	free(platform_storage)
@@ -1603,11 +1246,7 @@ platform_storage_init_writer :: proc(storage: engine.Storage) -> bool {
 		)
 	}
 	if (platform_storage.writable == nil) {
-		sdl.LogError(
-			cast(i32)sdl.LogCategory.CUSTOM,
-			"Writing storage could not be opened: %s",
-			sdl.GetError(),
-		)
+		logger(.ERROR, "Writing storage could not be opened: %s", sdl.GetError())
 		return false
 	}
 	for !sdl.StorageReady(platform_storage.writable) do sdl.Delay(1)
@@ -1618,7 +1257,236 @@ platform_storage_destroy_writer :: proc() {
 	if platform_storage.writable == nil do return
 	ok2 := sdl.CloseStorage(platform_storage.writable)
 	if (!ok2) {
-		sdl.LogError(cast(i32)sdl.LogCategory.CUSTOM, "failed to close storage %s", sdl.GetError())
+		logger(.ERROR, "failed to close storage %s", sdl.GetError())
 	}
 	platform_storage.writable = nil
+}
+
+@(private)
+priorities_to_sdl :: proc(level: engine.LoggerLevels) -> sdl.LogPriority {
+	#partial switch level {
+	case .TRACE:
+		return sdl.LogPriority.TRACE
+	case .VERBOSE:
+		return sdl.LogPriority.VERBOSE
+	case .DEBUG:
+		return sdl.LogPriority.DEBUG
+	case .INFO:
+		return sdl.LogPriority.INFO
+	case .WARN:
+		return sdl.LogPriority.WARN
+	case .ERROR:
+		return sdl.LogPriority.ERROR
+	case .CRITICAL:
+		return sdl.LogPriority.CRITICAL
+	case:
+		return sdl.LogPriority.INVALID
+	}
+}
+
+// -- Logger -- //
+
+// load shaders
+basic_vert_src := #load("../../shaders/basic.vert.glsl")
+basic_frag_src := #load("../../shaders/basic.frag.glsl")
+
+init_logger :: proc(level: engine.LoggerLevels) {
+	sdl.SetLogPriorities(priorities_to_sdl(level))
+}
+
+logger :: proc(level: engine.LoggerLevels, msg: string, args: ..any) {
+	cmessage := fmt.ctprintf(msg, ..args)
+	sdl.LogMessage(cast(i32)sdl.LogCategory.CUSTOM, priorities_to_sdl(level), cmessage)
+}
+
+@(private)
+GLColor :: struct {
+	r, g, b, a: f32,
+}
+
+@(private)
+engine_color_to_gl_color :: #force_inline proc(color: engine.Color) -> GLColor {
+	return GLColor {
+		r = f32(color.r) / f32(255),
+		g = f32(color.g) / f32(255),
+		b = f32(color.b) / f32(255),
+		a = f32(color.a) / f32(255),
+	}
+}
+
+// -- Renderer -- //
+
+MAX_TRIANGLES :: 1048
+MAX_VERTICES :: MAX_TRIANGLES * 3
+
+RendererTexture :: struct {
+	target:   u32,
+	width:    int,
+	height:   int,
+	channels: int,
+	bpp:      int,
+}
+
+RendererVertex :: struct {
+	position: glsl.vec4,
+	color:    glsl.vec4,
+	uv:       glsl.vec2,
+}
+
+ShaderPipeline :: struct {
+	pipeline:        u32,
+	vertex_shader:   u32,
+	fragment_shader: u32,
+}
+
+Renderer :: struct {
+	vao:             u32,
+	vbo:             u32,
+	shader_pipeline: ShaderPipeline,
+	projection:      glsl.mat4,
+	vertices_data:   [MAX_VERTICES]RendererVertex,
+	vertices_count:  int,
+}
+
+renderer_init :: proc() -> ^Renderer {
+
+	// create renderer
+	r := new(Renderer)
+
+	// create vertex array buffer
+	gl.CreateVertexArrays(1, &r.vao)
+
+	// create vertex buffer object
+	gl.CreateBuffers(1, &r.vbo)
+	gl.NamedBufferStorage(
+		r.vbo,
+		size_of(RendererVertex) * MAX_VERTICES,
+		nil,
+		gl.DYNAMIC_STORAGE_BIT,
+	)
+
+	// bind vertex buffer object to vertex array
+	gl.VertexArrayVertexBuffer(r.vao, 0, r.vbo, 0, size_of(RendererVertex))
+
+
+	// enable vertex
+	gl.EnableVertexArrayAttrib(r.vao, 0)
+	gl.EnableVertexArrayAttrib(r.vao, 1)
+	gl.EnableVertexArrayAttrib(r.vao, 2)
+
+
+	// position attribute
+	gl.VertexArrayAttribFormat(
+		r.vao,
+		0,
+		4,
+		gl.FLOAT,
+		gl.FALSE,
+		cast(u32)offset_of(RendererVertex, position),
+	)
+
+	// color attribute
+	gl.VertexArrayAttribFormat(
+		r.vao,
+		1,
+		4,
+		gl.FLOAT,
+		gl.FALSE,
+		cast(u32)offset_of(RendererVertex, color),
+	)
+
+	// uv attribute
+	gl.VertexArrayAttribFormat(
+		r.vao,
+		2,
+		2,
+		gl.FLOAT,
+		gl.FALSE,
+		cast(u32)offset_of(RendererVertex, uv),
+	)
+
+	// bind vertex attributes
+	gl.VertexArrayAttribBinding(r.vao, 0, 0)
+	gl.VertexArrayAttribBinding(r.vao, 1, 0)
+	gl.VertexArrayAttribBinding(r.vao, 2, 0)
+
+	// NOTE: this might bite me
+	w, h := get_window_size()
+	r.projection = glsl.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
+
+	// create shader program
+	vert_src := cstring(&basic_vert_src[0])
+	r.shader_pipeline.vertex_shader = gl.CreateShaderProgramv(gl.VERTEX_SHADER, 1, &vert_src)
+
+	frag_src := cstring(&basic_frag_src[0])
+	r.shader_pipeline.fragment_shader = gl.CreateShaderProgramv(gl.FRAGMENT_SHADER, 1, &frag_src)
+
+	gl.CreateProgramPipelines(1, &r.shader_pipeline.pipeline)
+
+	gl.UseProgramStages(
+		r.shader_pipeline.pipeline,
+		gl.VERTEX_SHADER_BIT,
+		r.shader_pipeline.vertex_shader,
+	)
+	gl.UseProgramStages(
+		r.shader_pipeline.pipeline,
+		gl.FRAGMENT_SHADER_BIT,
+		r.shader_pipeline.fragment_shader,
+	)
+
+	gl.BindProgramPipeline(r.shader_pipeline.pipeline)
+
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+	return r
+}
+
+renderer_push_vertex :: proc(r: ^Renderer, position: glsl.vec4, color: glsl.vec4, uv: glsl.vec2) {
+	count := r.vertices_count
+	renderer.vertices_data[count].position = position
+	renderer.vertices_data[count].color = color
+	renderer.vertices_data[count].uv = uv
+	r.vertices_count += 1
+}
+
+// NOTE: need to add pivot and rotation
+renderer_get_transformation_matrix :: proc(
+	r: Renderer,
+	x, y, width, height, scale: f64,
+	rotation: f32 = 0,
+	flip_x := false,
+	flip_y := false,
+	stretch_x: f64 = 0,
+	stretch_y: f64 = 0,
+) -> glsl.mat4 {
+
+	_flip_x := 1 if !flip_x else -1
+	_flip_y := 1 if !flip_y else -1
+
+	_flip_x_offset := (width) * scale if flip_x else 0
+	_flip_y_offset := (height) * scale if flip_y else 0
+
+	translate := glsl.mat4Translate({f32(x + _flip_x_offset), f32(y + _flip_y_offset), 0})
+	scale_matrix := glsl.mat4Scale(
+		{
+			f32((width + stretch_x) * scale) * f32(_flip_x),
+			f32((height + stretch_y) * scale) * f32(_flip_y),
+			1,
+		},
+	)
+	return r.projection * translate * scale_matrix
+}
+
+renderer_clear_vertices :: proc(r: ^Renderer) {
+	r.vertices_count = 0
+}
+
+renderer_destroy :: proc(renderer: ^Renderer) {
+	gl.DeleteProgram(renderer.shader_pipeline.vertex_shader)
+	gl.DeleteProgram(renderer.shader_pipeline.fragment_shader)
+	gl.DeleteProgramPipelines(1, &renderer.shader_pipeline.pipeline)
+	gl.DeleteVertexArrays(1, &renderer.vao)
+	gl.DeleteBuffers(1, &renderer.vbo)
+	free(renderer)
 }

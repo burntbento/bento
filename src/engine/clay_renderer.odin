@@ -181,7 +181,7 @@ platform_clay_render_commands :: proc(
 		// TODO: implement
 
 		case:
-			state.platform.logger("Unknown render command type: %d", rcmd.commandType)
+			state.platform.logger(.DEBUG, "Unknown render command type: %d", rcmd.commandType)
 		}
 	}
 }

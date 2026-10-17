@@ -1,6 +1,5 @@
 package engine
 
-
 ScaleMode :: enum {
 	NEAREST,
 	LINEAR,
@@ -20,14 +19,13 @@ PlatformConfig :: struct {
 	// storage
 	org:           string,
 	app:           string,
+
+	// logging
+	logging_level: LoggerLevels,
 }
 
 // Platform is a v table that is filled in the execute logic
 Platform :: struct {
-	// memory
-	allocate_memory:                  proc(size: int) -> rawptr, // NOTE: not sure if ill use these
-	free_memory:                      proc(p: rawptr),
-
 	// files
 	get_file_size:                    proc(path: cstring) -> int,
 	load_file:                        proc(path: cstring, buffer: rawptr, size: int) -> bool,
@@ -103,7 +101,7 @@ Platform :: struct {
 	),
 
 	// logger
-	logger:                           proc(msg: string, args: ..any),
+	logger:                           proc(level: LoggerLevels, msg: string, args: ..any),
 
 	// memory
 	free_mem:                         proc(mem: rawptr),

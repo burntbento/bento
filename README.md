@@ -4,7 +4,7 @@
 
 # bento
 
-2D Game Engine written in Odin with SDL3.
+2D Game Engine written in Odin with SDL3 and OpenGL.
 
 # Installation
 
@@ -12,6 +12,7 @@
 
 - Odin
 - SDL3
+- OpenGL
 - SDL_ttf
 
 To use the library either use git submodules or just copy the `src` folder into your project.
