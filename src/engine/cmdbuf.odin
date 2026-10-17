@@ -73,16 +73,9 @@ RenderCommandAttachCamera :: struct {
 
 RenderCommandDetachCamera :: struct {}
 
-RenderCommandPushShader :: struct {
-	handle: int,
-}
-
-RenderCommandPopShader :: struct {}
 
 // add to render command tagged union
 RenderCommand :: union {
-	RenderCommandPushCanvas,
-	RenderCommandPopCanvas,
 	RenderCommandClearScreen,
 	RenderCommandDrawRect,
 	RenderCommandDrawSprite,
@@ -95,8 +88,6 @@ RenderCommand :: union {
 	RenderCommandSetClippingRect,
 	RenderCommandEndClippingRect,
 	RenderCommandDrawArc,
-	RenderCommandPushShader,
-	RenderCommandPopShader,
 }
 
 // buffer to be read and written to
@@ -243,22 +234,4 @@ cmd_set_clipping_rect :: proc(cmdbuf: ^RenderCommandBuffer, rect: Rect) {
 
 cmd_end_clipping_rect :: proc(cmdbuf: ^RenderCommandBuffer) {
 	cmd_push(cmdbuf, RenderCommandEndClippingRect{})
-}
-
-// push and pop shader
-cmd_push_shader :: proc(cmdbuf: ^RenderCommandBuffer, shader_handle: int) {
-	cmd_push(cmdbuf, RenderCommandPushShader{handle = shader_handle})
-}
-
-cmd_pop_shader :: proc(cmdbuf: ^RenderCommandBuffer) {
-	cmd_push(cmdbuf, RenderCommandPopShader{})
-}
-
-// push and pop canvas
-cmd_push_canvas :: proc(cmdbuf: ^RenderCommandBuffer, canvas: int) {
-	cmd_push(cmdbuf, RenderCommandPushCanvas{canvas = canvas})
-}
-
-cmd_pop_canvas :: proc(cmdbuf: ^RenderCommandBuffer) {
-	cmd_push(cmdbuf, RenderCommandPopCanvas{})
 }

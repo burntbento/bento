@@ -245,33 +245,15 @@ get_page_size :: proc() -> i32 {
 	return sdl.GetSystemPageSize()
 }
 
-
-// deprecated
-shader_create_info :: proc(shader_create_info: engine.ShaderCreateInfo) -> int {return -1}
-
-// deprecated
-set_gpu_fragment_shader_uniforms :: proc(
-	shader: int,
-	slot: u32,
-	uniform: rawptr,
-	uniform_length: u32,
-) {
-}
-
-destroy_all_shaders :: proc() {}
-
-
-push_shader_state :: proc(shader: int) {}
-
-pop_shader_state :: proc() {}
-
 clear_screen :: proc(color: engine.Color) {
 	gl_color := engine_color_to_gl_color(color)
 	gl.ClearColor(gl_color.r, gl_color.g, gl_color.b, gl_color.a)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 }
 
-draw_circle :: proc(circle: engine.Circle, color: engine.Color) {}
+draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
+	logger(.ERROR, "NOT IMPLEMENTED")
+}
 
 draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	gl_color := engine_color_to_gl_color(color)
@@ -431,11 +413,17 @@ draw_arc :: proc(
 	center: engine.Vector2,
 	radius, start_angle, end_angle, thickness: f32,
 	color: engine.Color,
-) {}
+) {
+	logger(.ERROR, "NOT IMPLEMENTED")
+}
 
-set_clip_rect :: proc(rect: engine.Rect) {}
+set_clip_rect :: proc(rect: engine.Rect) {
+	logger(.ERROR, "NOT IMPLEMENTED")
+}
 
-end_clip_rect :: proc() {}
+end_clip_rect :: proc() {
+	logger(.ERROR, "NOT IMPLEMENTED")
+}
 
 // NOTE: i added stretch_x and stretch_y so that you can flex and fit tiles together
 // i.e. 9 slice fitting in the clay renderer. im not too sure if i like the
@@ -512,6 +500,7 @@ draw_sprite :: proc(
 	}
 
 	gl.BindTextureUnit(0, texture.target)
+
 
 	transformation := renderer_get_transformation_matrix(
 		renderer^,
@@ -658,16 +647,6 @@ write_file :: proc(path: string, buffer: rawptr, size: int, storage: engine.Stor
 	}
 	return true
 }
-
-// create_canvas creates a blank texture onto which you can render onto
-// it will be destoryed at shutdown with destory_all_textures
-create_canvas :: proc(width: int, height: int) -> int {return -1}
-
-
-push_canvas :: proc(canvas: int) {}
-
-pop_canvas :: proc() {}
-
 
 create_placeholder_texture :: proc() {
 	target: u32
@@ -1295,8 +1274,15 @@ init_logger :: proc(level: engine.LoggerLevels) {
 }
 
 logger :: proc(level: engine.LoggerLevels, msg: string, args: ..any) {
-	cmessage := fmt.ctprintf(msg, ..args)
-	sdl.LogMessage(cast(i32)sdl.LogCategory.CUSTOM, priorities_to_sdl(level), cmessage)
+	message := fmt.tprintf(msg, ..args)
+	b := strings.builder_make(context.temp_allocator)
+	strings.write_string(&b, "BENTO ")
+	strings.write_string(&b, message)
+	sdl.LogMessage(
+		cast(i32)sdl.LogCategory.CUSTOM,
+		priorities_to_sdl(level),
+		strings.to_cstring(&b),
+	)
 }
 
 @(private)
