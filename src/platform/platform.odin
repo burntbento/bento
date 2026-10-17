@@ -70,7 +70,7 @@ PlatformConfig :: struct {
 	flags:         sdl.WindowFlags,
 	org:           cstring, // for storage api
 	app:           cstring, // for storage api
-	scale_mode:    sdl.ScaleMode,
+	scale_mode:    i32,
 	logging_level: engine.LoggerLevels,
 	// allocator
 	_allocator:    mem.Allocator,
@@ -123,13 +123,13 @@ platform_config_new :: proc(
 	// set scale mode
 	switch config.scale_mode {
 	case .LINEAR:
-		p_config.scale_mode = .LINEAR
+		p_config.scale_mode = gl.LINEAR
 	case .NEAREST:
-		p_config.scale_mode = .NEAREST
+		p_config.scale_mode = gl.NEAREST
 	case .PIXELART:
-		p_config.scale_mode = .PIXELART
+		p_config.scale_mode = gl.NEAREST
 	case:
-		p_config.scale_mode = .LINEAR
+		p_config.scale_mode = gl.LINEAR
 
 	}
 
@@ -657,8 +657,8 @@ create_placeholder_texture :: proc() {
 
 	gl.TextureParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TextureParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	gl.TextureParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TextureParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TextureParameteri(target, gl.TEXTURE_MIN_FILTER, platform_config.scale_mode)
+	gl.TextureParameteri(target, gl.TEXTURE_MAG_FILTER, platform_config.scale_mode)
 
 	gl.TextureStorage2D(target, 1, gl.RGB8, i32(width), i32(height))
 	gl.TextureSubImage2D(
@@ -687,8 +687,8 @@ initialise_texture_target :: proc(target: ^u32, width, height: int) {
 
 	gl.TextureParameteri(target^, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TextureParameteri(target^, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	gl.TextureParameteri(target^, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TextureParameteri(target^, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TextureParameteri(target^, gl.TEXTURE_MIN_FILTER, platform_config.scale_mode)
+	gl.TextureParameteri(target^, gl.TEXTURE_MAG_FILTER, platform_config.scale_mode)
 
 	gl.TextureStorage2D(target^, 1, gl.RGBA8, i32(width), i32(height))
 	gl.GenerateTextureMipmap(target^)
@@ -716,8 +716,8 @@ create_texture :: proc(width, height, channels, bpp: int, data: ^u32) -> int {
 
 	gl.TextureParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TextureParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	gl.TextureParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TextureParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TextureParameteri(target, gl.TEXTURE_MIN_FILTER, platform_config.scale_mode)
+	gl.TextureParameteri(target, gl.TEXTURE_MAG_FILTER, platform_config.scale_mode)
 
 	internal_format := (channels == 4 ? gl.RGBA8 : gl.RGB8)
 	gl.TextureStorage2D(target, 1, u32(internal_format), i32(width), i32(height))
