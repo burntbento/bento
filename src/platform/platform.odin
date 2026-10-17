@@ -245,26 +245,6 @@ get_page_size :: proc() -> i32 {
 	return sdl.GetSystemPageSize()
 }
 
-
-// deprecated
-shader_create_info :: proc(shader_create_info: engine.ShaderCreateInfo) -> int {return -1}
-
-// deprecated
-set_gpu_fragment_shader_uniforms :: proc(
-	shader: int,
-	slot: u32,
-	uniform: rawptr,
-	uniform_length: u32,
-) {
-}
-
-destroy_all_shaders :: proc() {}
-
-
-push_shader_state :: proc(shader: int) {}
-
-pop_shader_state :: proc() {}
-
 clear_screen :: proc(color: engine.Color) {
 	gl_color := engine_color_to_gl_color(color)
 	gl.ClearColor(gl_color.r, gl_color.g, gl_color.b, gl_color.a)
@@ -658,16 +638,6 @@ write_file :: proc(path: string, buffer: rawptr, size: int, storage: engine.Stor
 	}
 	return true
 }
-
-// create_canvas creates a blank texture onto which you can render onto
-// it will be destoryed at shutdown with destory_all_textures
-create_canvas :: proc(width: int, height: int) -> int {return -1}
-
-
-push_canvas :: proc(canvas: int) {}
-
-pop_canvas :: proc() {}
-
 
 create_placeholder_texture :: proc() {
 	target: u32

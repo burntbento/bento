@@ -44,37 +44,31 @@ engine_run :: proc(game_data: ^Game) {
 	platform.init(game_data.platform_config)
 
 	platform_data := engine.Platform {
-		get_file_size                    = platform.get_file_size,
-		load_file                        = platform.load_file,
-		write_file                       = platform.write_file,
-		create_texture                   = platform.create_texture,
-		create_canvas                    = platform.create_canvas,
-		push_canvas                      = platform.push_canvas,
-		pop_canvas                       = platform.pop_canvas,
-		destroy_all_textures             = platform.destroy_all_textures,
-		get_window_size                  = platform.get_window_size,
-		get_render_size                  = platform.get_render_size,
-		destroy_all_sounds               = platform.destroy_all_sounds,
-		load_sound                       = platform.load_sound,
-		play_sound                       = platform.play_sound,
-		resume_sound                     = platform.resume_sound,
-		pause_sound                      = platform.pause_sound,
-		set_sound_volume                 = platform.set_sound_volume,
-		is_sound_playing                 = platform.is_sound_playing,
-		destroy_all_fonts                = platform.destroy_all_fonts,
-		load_font                        = platform.load_font,
-		measure_text                     = platform.measure_text,
-		start_text_input                 = platform.start_text_input,
-		stop_text_input                  = platform.stop_text_input,
-		get_text_input_buffer            = platform.get_text_input_buffer,
-		gamepad_rumble                   = platform.gamepad_rumble,
-		set_deadzone                     = platform.set_deadzone,
-		get_deadzone                     = platform.get_deadzone,
-		shader_create_info               = platform.shader_create_info,
-		destroy_all_shaders              = platform.destroy_all_shaders,
-		set_gpu_fragment_shader_uniforms = platform.set_gpu_fragment_shader_uniforms,
-		logger                           = platform.logger,
-		free_mem                         = platform.free_mem,
+		get_file_size         = platform.get_file_size,
+		load_file             = platform.load_file,
+		write_file            = platform.write_file,
+		create_texture        = platform.create_texture,
+		destroy_all_textures  = platform.destroy_all_textures,
+		get_window_size       = platform.get_window_size,
+		get_render_size       = platform.get_render_size,
+		destroy_all_sounds    = platform.destroy_all_sounds,
+		load_sound            = platform.load_sound,
+		play_sound            = platform.play_sound,
+		resume_sound          = platform.resume_sound,
+		pause_sound           = platform.pause_sound,
+		set_sound_volume      = platform.set_sound_volume,
+		is_sound_playing      = platform.is_sound_playing,
+		destroy_all_fonts     = platform.destroy_all_fonts,
+		load_font             = platform.load_font,
+		measure_text          = platform.measure_text,
+		start_text_input      = platform.start_text_input,
+		stop_text_input       = platform.stop_text_input,
+		get_text_input_buffer = platform.get_text_input_buffer,
+		gamepad_rumble        = platform.gamepad_rumble,
+		set_deadzone          = platform.set_deadzone,
+		get_deadzone          = platform.get_deadzone,
+		logger                = platform.logger,
+		free_mem              = platform.free_mem,
 	}
 
 	input: engine.GameInput
@@ -163,14 +157,6 @@ engine_run :: proc(game_data: ^Game) {
 					platform.set_clip_rect(v.rect)
 				case engine.RenderCommandEndClippingRect:
 					platform.end_clip_rect()
-				case engine.RenderCommandPushShader:
-					platform.push_shader_state(v.handle)
-				case engine.RenderCommandPopShader:
-					platform.pop_shader_state()
-				case engine.RenderCommandPushCanvas:
-					platform.push_canvas(v.canvas)
-				case engine.RenderCommandPopCanvas:
-					platform.pop_canvas()
 				case:
 					break
 				}
