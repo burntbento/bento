@@ -1388,8 +1388,8 @@ renderer_get_transformation_matrix :: proc(
 	translate := glsl.mat4Translate({f32(x + _flip_x_offset), f32(y + _flip_y_offset), 0})
 	scale_matrix := glsl.mat4Scale(
 		{
-			f32(width * scale + stretch_x) * f32(_flip_x),
-			f32(height * scale + stretch_x) * f32(_flip_y),
+			f32((width + stretch_x) * scale) * f32(_flip_x),
+			f32((height + stretch_y) * scale) * f32(_flip_y),
 			1,
 		},
 	)
