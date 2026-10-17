@@ -1265,8 +1265,15 @@ init_logger :: proc(level: engine.LoggerLevels) {
 }
 
 logger :: proc(level: engine.LoggerLevels, msg: string, args: ..any) {
-	cmessage := fmt.ctprintf(msg, ..args)
-	sdl.LogMessage(cast(i32)sdl.LogCategory.CUSTOM, priorities_to_sdl(level), cmessage)
+	message := fmt.tprintf(msg, ..args)
+	b := strings.builder_make(context.temp_allocator)
+	strings.write_string(&b, "BENTO ")
+	strings.write_string(&b, message)
+	sdl.LogMessage(
+		cast(i32)sdl.LogCategory.CUSTOM,
+		priorities_to_sdl(level),
+		strings.to_cstring(&b),
+	)
 }
 
 @(private)
