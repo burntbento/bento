@@ -501,7 +501,6 @@ draw_sprite :: proc(
 
 	gl.BindTextureUnit(0, texture.target)
 
-
 	transformation := renderer_get_transformation_matrix(
 		renderer^,
 		t_x,
@@ -509,7 +508,7 @@ draw_sprite :: proc(
 		texture_rect.width,
 		texture_rect.height,
 		t_s,
-		0,
+		f32(rotation),
 		flip_x,
 		flip_y,
 		f64(stretch_x),
@@ -546,7 +545,7 @@ measure_text :: proc(font_handle: int, text: string) -> (width: int, height: int
 
 draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, color: engine.Color) {
 
-	font := fonts[font_handle]
+	font := get_font(font_handle)
 	font_texture := get_texture(font_texture_handle)
 
 	text_surface := ttf.RenderText_Blended_Wrapped(
@@ -1473,6 +1472,7 @@ renderer_get_transformation_matrix :: proc(
 	_flip_y_offset := (height) * scale if flip_y else 0
 
 	translate := glsl.mat4Translate({f32(x + _flip_x_offset), f32(y + _flip_y_offset), 0})
+	rotation := glsl.mat4Rotate({0, 0, 1}, math.to_radians(rotation))
 	scale_matrix := glsl.mat4Scale(
 		{
 			f32((width + stretch_x) * scale) * f32(_flip_x),
@@ -1480,7 +1480,7 @@ renderer_get_transformation_matrix :: proc(
 			1,
 		},
 	)
-	return r.projection * translate * scale_matrix
+	return r.projection * translate * rotation * scale_matrix
 }
 
 renderer_clear_vertices :: proc(r: ^Renderer) {
