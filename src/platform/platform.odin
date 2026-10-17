@@ -251,7 +251,9 @@ clear_screen :: proc(color: engine.Color) {
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 }
 
-draw_circle :: proc(circle: engine.Circle, color: engine.Color) {}
+draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
+	logger(.ERROR, "NOT IMPLEMENTED")
+}
 
 draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	gl_color := engine_color_to_gl_color(color)
@@ -411,11 +413,17 @@ draw_arc :: proc(
 	center: engine.Vector2,
 	radius, start_angle, end_angle, thickness: f32,
 	color: engine.Color,
-) {}
+) {
+	logger(.ERROR, "NOT IMPLEMENTED")
+}
 
-set_clip_rect :: proc(rect: engine.Rect) {}
+set_clip_rect :: proc(rect: engine.Rect) {
+	logger(.ERROR, "NOT IMPLEMENTED")
+}
 
-end_clip_rect :: proc() {}
+end_clip_rect :: proc() {
+	logger(.ERROR, "NOT IMPLEMENTED")
+}
 
 // NOTE: i added stretch_x and stretch_y so that you can flex and fit tiles together
 // i.e. 9 slice fitting in the clay renderer. im not too sure if i like the
@@ -492,6 +500,7 @@ draw_sprite :: proc(
 	}
 
 	gl.BindTextureUnit(0, texture.target)
+
 
 	transformation := renderer_get_transformation_matrix(
 		renderer^,
