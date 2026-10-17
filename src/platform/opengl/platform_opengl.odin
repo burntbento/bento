@@ -271,6 +271,8 @@ draw_circle :: proc(circle: engine.Circle, color: engine.Color) {}
 draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	gl_color := engine_color_to_gl_color(color)
 
+	t_x, t_y, t_s := camera_translation_position(rect.x, rect.y, 1)
+
 	renderer_push_vertex(
 		renderer,
 		{0, 0, 0, 1},
@@ -322,11 +324,11 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 
 	transformation := renderer_get_transformation_matrix(
 		renderer^,
-		rect.x,
-		rect.y,
+		t_x,
+		t_y,
 		rect.width,
 		rect.height,
-		1,
+		t_s,
 	)
 	gl.ProgramUniformMatrix4fv(
 		renderer.shader_pipeline.vertex_shader,
@@ -350,6 +352,7 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 
 	gl_color := engine_color_to_gl_color(color)
+	t_x, t_y, t_s := camera_translation_position(rect.x, rect.y, 1)
 
 	renderer_push_vertex(
 		renderer,
@@ -389,11 +392,11 @@ draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 
 	transformation := renderer_get_transformation_matrix(
 		renderer^,
-		rect.x,
-		rect.y,
+		t_x,
+		t_y,
 		rect.width,
 		rect.height,
-		1,
+		t_s,
 	)
 	gl.ProgramUniformMatrix4fv(
 		renderer.shader_pipeline.vertex_shader,
