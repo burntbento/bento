@@ -17,7 +17,15 @@ screen_height: int // height of the screen in pixels
 texture_handle: int // handle to the gamepad.png texture
 texture_width :: 16 // 16 x 16 cell
 
+scale_constant: f64
+
 // -- Gamepad -- //
+
+// position and scale
+parent_position: engine.Vector2
+parent_width: f64
+parent_height: f64
+parent_scale: f64
 
 // joysticks
 game_joystick_left: ^Joystick
@@ -71,33 +79,50 @@ init :: proc(platform: ^engine.Platform) {
 
 	// fill in screen_width and height
 	screen_width, screen_height = state.platform.get_window_size()
+	scale_constant = f64(screen_width) / f64(screen_height)
+
 
 	// get texture handle
 	texture_handle, err = engine.texture_load("examples/gamepad/gamepad.png", state)
 	if err != nil {
-		panic("failed to load retro_cats")
+		panic("failed to load gamepad.png")
 	}
 
+	parent_position = engine.vector2(f64(screen_width) * 0.05, f64(screen_height) * 0.2)
+	parent_scale = scale_constant * 6.5
+	parent_width = parent_scale * texture_width * 5
+	parent_height = parent_scale * texture_width * 3
+
+
 	// init joystick
-	scale: f64 = 5
 	game_joystick_left = joystick_new(
-		engine.vector2(f64(screen_width) * 0.25, f64(screen_height) * 0.3),
-		scale + 4,
+		engine.vector2(
+			parent_position.x + parent_width * 0.22,
+			parent_position.y + parent_height * 0.15,
+		),
+		parent_scale * 0.7,
 		texture_handle,
 	)
 
 	game_joystick_right = joystick_new(
-		engine.vector2(f64(screen_width) * 0.52, f64(screen_height) * 0.45),
-		scale + 4,
+		engine.vector2(
+			parent_position.x + parent_width * 0.5,
+			parent_position.y + parent_height * 0.35,
+		),
+		parent_scale * 0.7,
 		texture_handle,
 		false,
 	)
 
 	// init buttons
-	button_postions := engine.vector2(f64(screen_width) * 0.58, f64(screen_height) * 0.25)
+	scale := parent_scale * 0.3
+	button_postions := engine.vector2(
+		parent_position.x + parent_width * 0.6,
+		parent_position.y + parent_height * 0.1,
+	)
 	game_button_y = button_new(
 		engine.vector2(button_postions.x + texture_width * scale, button_postions.y),
-		scale,
+		parent_scale * 0.3,
 		engine.InputType.INPUT_GAMEPAD_BUTTON_Y,
 		engine.rect(3 * texture_width, 0, texture_width, texture_width),
 		engine.rect(2 * texture_width, 0, texture_width, texture_width),
@@ -108,7 +133,7 @@ init :: proc(platform: ^engine.Platform) {
 			button_postions.x + 2 * texture_width * scale,
 			button_postions.y + texture_width * scale,
 		),
-		scale,
+		parent_scale * 0.3,
 		engine.InputType.INPUT_GAMEPAD_BUTTON_B,
 		engine.rect(5 * texture_width, 0, texture_width, texture_width),
 		engine.rect(4 * texture_width, 0, texture_width, texture_width),
@@ -119,7 +144,7 @@ init :: proc(platform: ^engine.Platform) {
 			button_postions.x + texture_width * scale,
 			button_postions.y + texture_width * 2 * scale,
 		),
-		scale,
+		parent_scale * 0.3,
 		engine.InputType.INPUT_GAMEPAD_BUTTON_A,
 		engine.rect(7 * texture_width, 0, texture_width, texture_width),
 		engine.rect(6 * texture_width, 0, texture_width, texture_width),
@@ -127,7 +152,7 @@ init :: proc(platform: ^engine.Platform) {
 	)
 	game_button_x = button_new(
 		engine.vector2(button_postions.x, button_postions.y + texture_width * scale),
-		scale,
+		parent_scale * 0.3,
 		engine.InputType.INPUT_GAMEPAD_BUTTON_X,
 		engine.rect(9 * texture_width, 0, texture_width, texture_width),
 		engine.rect(8 * texture_width, 0, texture_width, texture_width),
@@ -136,8 +161,11 @@ init :: proc(platform: ^engine.Platform) {
 
 
 	game_dpad = dpad_new(
-		engine.vector2(f64(screen_width) * 0.32, f64(screen_height) * 0.42),
-		12,
+		engine.vector2(
+			parent_position.x + parent_width * 0.3,
+			parent_position.y + parent_height * 0.35,
+		),
+		parent_scale * 0.8,
 		texture_handle,
 	)
 }
@@ -172,8 +200,8 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 
 	engine.cmd_draw_sprite(
 		state.cmdbuf,
-		engine.vector2(f64(screen_width) * 0.05, f64(screen_height) * 0.2),
-		15,
+		parent_position,
+		scale_constant * 6.5,
 		0,
 		engine.vector2(0, 0),
 		texture_handle,
