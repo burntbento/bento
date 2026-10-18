@@ -18,6 +18,8 @@ texture_handle: int // handle to the gamepad.png texture
 texture_width :: 16 // 16 x 16 cell
 
 // -- Gamepad -- //
+
+// joysticks
 game_joystick_left: ^Joystick
 game_joystick_right: ^Joystick
 
@@ -26,6 +28,9 @@ game_button_y: ^Button
 game_button_b: ^Button
 game_button_a: ^Button
 game_button_x: ^Button
+
+// dpad
+game_dpad: ^DPAD
 
 // -- Main Loop -- //
 
@@ -89,7 +94,7 @@ init :: proc(platform: ^engine.Platform) {
 	)
 
 	// init buttons
-	button_postions := engine.vector2(f64(screen_width) * 0.6, f64(screen_height) * 0.25)
+	button_postions := engine.vector2(f64(screen_width) * 0.58, f64(screen_height) * 0.25)
 	game_button_y = button_new(
 		engine.vector2(button_postions.x + texture_width * scale, button_postions.y),
 		scale,
@@ -128,6 +133,13 @@ init :: proc(platform: ^engine.Platform) {
 		engine.rect(8 * texture_width, 0, texture_width, texture_width),
 		texture_handle,
 	)
+
+
+	game_dpad = dpad_new(
+		engine.vector2(f64(screen_width) * 0.32, f64(screen_height) * 0.42),
+		12,
+		texture_handle,
+	)
 }
 
 update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
@@ -141,6 +153,10 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 	button_update(game_button_b, input, dt)
 	button_update(game_button_a, input, dt)
 	button_update(game_button_x, input, dt)
+
+	// dpad
+	dpad_update(game_dpad, input, dt)
+
 	return true
 }
 
@@ -151,7 +167,8 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 
 
 	// flush screen with a blank color
-	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
+	engine.cmd_clear_screen(state.cmdbuf, engine.color(199, 220, 208, 255))
+
 
 	engine.cmd_draw_sprite(
 		state.cmdbuf,
@@ -166,6 +183,10 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 		false,
 	)
 
+	// dpad render
+	dpad_render(state.cmdbuf, game_dpad)
+
+	// joystick render
 	joystick_render(state.cmdbuf, game_joystick_left)
 	joystick_render(state.cmdbuf, game_joystick_right)
 
@@ -178,7 +199,11 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	return state.cmdbuf
 }
 
+
 shutdown :: proc() {
+	// free dpad
+	dpad_destroy(game_dpad)
+
 	// free joystick
 	joystick_destroy(game_joystick_left)
 	joystick_destroy(game_joystick_right)
@@ -330,4 +355,82 @@ button_render :: proc(cmdbuf: ^engine.RenderCommandBuffer, button: ^Button) {
 
 button_destroy :: proc(button: ^Button) {
 	free(button)
+}
+
+// -- DPAD -- //
+
+DPAD :: struct {
+	position:       engine.Vector2,
+	texture_rect:   engine.Rect,
+	texture_handle: int,
+	scale:          f64,
+}
+
+dpad_new :: proc(position: engine.Vector2, scale: f64, texture_handle: int) -> ^DPAD {
+	dpad := new(DPAD)
+	dpad.position = position
+	dpad.scale = scale
+	dpad.texture_handle = texture_handle
+	return dpad
+}
+
+dpad_update :: proc(dpad: ^DPAD, input: ^engine.GameInput, dt: f64) {
+	dpad.texture_rect = engine.rect(texture_width * 5, texture_width, texture_width, texture_width)
+
+
+	if engine.input_state(input, engine.InputType.INPUT_GAMEPAD_BUTTON_DPAD_UP) > 0 {
+		dpad.texture_rect = engine.rect(
+			texture_width * 6,
+			texture_width,
+			texture_width,
+			texture_width,
+		)
+	}
+
+	if engine.input_state(input, engine.InputType.INPUT_GAMEPAD_BUTTON_DPAD_DOWN) > 0 {
+		dpad.texture_rect = engine.rect(
+			texture_width * 6,
+			texture_width * 2,
+			texture_width,
+			texture_width,
+		)
+	}
+
+	if engine.input_state(input, engine.InputType.INPUT_GAMEPAD_BUTTON_DPAD_RIGHT) > 0 {
+		dpad.texture_rect = engine.rect(
+			texture_width * 7,
+			texture_width,
+			texture_width,
+			texture_width,
+		)
+	}
+
+	if engine.input_state(input, engine.InputType.INPUT_GAMEPAD_BUTTON_DPAD_LEFT) > 0 {
+		dpad.texture_rect = engine.rect(
+			texture_width * 7,
+			texture_width * 2,
+			texture_width,
+			texture_width,
+		)
+	}
+
+}
+
+dpad_render :: proc(cmdbuf: ^engine.RenderCommandBuffer, dpad: ^DPAD) {
+	engine.cmd_draw_sprite(
+		state.cmdbuf,
+		dpad.position,
+		dpad.scale,
+		0,
+		engine.vector2(0, 0),
+		dpad.texture_handle,
+		dpad.texture_rect,
+		engine.WHITE,
+		false,
+		false,
+	)
+}
+
+dpad_destroy :: proc(dpad: ^DPAD) {
+	free(dpad)
 }
