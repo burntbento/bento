@@ -18,6 +18,9 @@
 !src/engine/vendor/clay-odin/**/*.lib
 !src/engine/vendor/clay-odin/**/*.o
 
+# aseprite files
+examples/*/*.aseprite
+
 
 # Debug output
 *.dSYM/
