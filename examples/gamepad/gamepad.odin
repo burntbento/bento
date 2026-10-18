@@ -89,10 +89,13 @@ init :: proc(platform: ^engine.Platform) {
 	}
 
 	// calculate parent position and scale
-	parent_position = engine.vector2(f64(screen_width) * 0.05, f64(screen_height) * 0.2)
 	parent_scale = scale_constant * 6.5
 	parent_width = parent_scale * texture_width * 5
 	parent_height = parent_scale * texture_width * 3
+	parent_position = engine.vector2(
+		f64(screen_width) * 0.5 - parent_width / 2,
+		f64(screen_height) * 0.5 - parent_height / 2,
+	)
 
 
 	// init joystick
