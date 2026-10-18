@@ -88,6 +88,7 @@ init :: proc(platform: ^engine.Platform) {
 		panic("failed to load gamepad.png")
 	}
 
+	// calculate parent position and scale
 	parent_position = engine.vector2(f64(screen_width) * 0.05, f64(screen_height) * 0.2)
 	parent_scale = scale_constant * 6.5
 	parent_width = parent_scale * texture_width * 5
@@ -160,6 +161,7 @@ init :: proc(platform: ^engine.Platform) {
 	)
 
 
+	// init dpad
 	game_dpad = dpad_new(
 		engine.vector2(
 			parent_position.x + parent_width * 0.3,
@@ -198,6 +200,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	engine.cmd_clear_screen(state.cmdbuf, engine.color(199, 220, 208, 255))
 
 
+	// draw dpad base
 	engine.cmd_draw_sprite(
 		state.cmdbuf,
 		parent_position,
