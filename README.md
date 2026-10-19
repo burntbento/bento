@@ -19,7 +19,7 @@ To use the library either use git submodules or just copy the `src` folder into 
 
 Use collections to compile, e.g.
 
-```odin
+```odin,
 odin run . -collection:bento=src
 ```
 
@@ -36,6 +36,11 @@ or if using the Makefile,
 
 ```odin
 make run-example example={example_name} // e.g. make run-example example=rectangle
+```
+to run all examples,
+
+```
+make run-all
 ```
 A full example of rectangle.odin,
 
