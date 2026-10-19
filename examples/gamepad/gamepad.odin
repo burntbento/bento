@@ -97,10 +97,7 @@ init :: proc(platform: ^engine.Platform) {
 	// create font handle
 	heading_handle = engine.load_font("examples/audio/font.ttf", 80, state)
 	heading_w, heading_h = state.platform.measure_text(heading_handle, heading)
-	heading_position = engine.vector2(
-		f64(screen_width / 2) - f64(heading_w / 2),
-		f64(screen_height) * 0.01,
-	)
+	heading_position = engine.vector2(f64(screen_width / 2) - f64(heading_w / 2), -5)
 
 	// calculate parent position and scale
 	parent_scale = scale_constant * 6.5
