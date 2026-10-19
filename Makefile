@@ -6,6 +6,9 @@ flags = -file -vet -strict-style -vet-tabs -debug -warnings-as-errors -collectio
 run-example:
 	odin run ./examples/$(example)/$(example).odin $(flags)
 
+run-all:
+	odin run ./examples/all $(flags)
+
 
 
 
