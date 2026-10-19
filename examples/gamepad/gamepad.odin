@@ -19,6 +19,12 @@ texture_width :: 16 // 16 x 16 cell
 
 scale_constant: f64
 
+
+heading :: "GAMEPAD"
+heading_handle: int
+heading_position: engine.Vector2
+heading_w, heading_h: int
+
 // -- Gamepad -- //
 
 // position and scale
@@ -87,6 +93,14 @@ init :: proc(platform: ^engine.Platform) {
 	if err != nil {
 		panic("failed to load gamepad.png")
 	}
+
+	// create font handle
+	heading_handle = engine.load_font("examples/audio/font.ttf", 80, state)
+	heading_w, heading_h = state.platform.measure_text(heading_handle, heading)
+	heading_position = engine.vector2(
+		f64(screen_width / 2) - f64(heading_w / 2),
+		f64(screen_height) * 0.01,
+	)
 
 	// calculate parent position and scale
 	parent_scale = scale_constant * 6.5
@@ -176,6 +190,8 @@ init :: proc(platform: ^engine.Platform) {
 }
 
 update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
+	// heading
+	heading_position.y += math.sin(engine.accumulator * 3) * 0.2
 
 	// joystick
 	joystick_update(game_joystick_left, input, dt)
@@ -202,6 +218,8 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	// flush screen with a blank color
 	engine.cmd_clear_screen(state.cmdbuf, engine.color(199, 220, 208, 255))
 
+	// heading
+	engine.cmd_draw_text(state.cmdbuf, heading_position, heading, heading_handle, engine.BLACK)
 
 	// draw dpad base
 	engine.cmd_draw_sprite(
