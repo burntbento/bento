@@ -230,6 +230,7 @@ init :: proc(config: engine.PlatformConfig) {
 		logger(.ERROR, "ttf failed to initialise: %s", sdl.GetError())
 	}
 	text_engine = ttf.CreateSurfaceTextEngine()
+	logger(.DEBUG, "Created SDL3_ttf engine, version: %d", ttf.Version())
 
 }
 

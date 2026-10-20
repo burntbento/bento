@@ -14,10 +14,10 @@
 
 ## Dependencies
 
-- Odin
-- OpenGL 4.6
-- SDL3
-- SDL_ttf
+- Odin version:dev-2026-10
+- OpenGL version:4.6
+- SDL3 version:3.4.18
+- SDL3_ttf version:3.2.2
 
 To use the library either use git submodules or just copy the `src` folder into your project.
 
@@ -29,7 +29,7 @@ odin run . -collection:bento=src
 
 # Examples
 
-For convinience, there is a examples folder that holds some simple examples to get started with. It also shows how to idiomatically use this library.
+For convinience, there is a examples folder that holds some simple examples to get started with. It also shows how to use this library.
 
 Run examples from the root of the directory with,
 
@@ -49,8 +49,6 @@ make run-all
 A full example of rectangle.odin,
 
 ```odin
-// examples/rectangle/rectangle.odin
-
 package rectangle
 
 import "bento:engine"
@@ -76,6 +74,7 @@ main :: proc() {
 		window_height = 600,
 		fullscreen    = false,
 		scale_mode    = .LINEAR,
+		logging_level = .VERBOSE,
 	}
 
 	game_data := execute.Game {
@@ -140,8 +139,6 @@ shutdown :: proc() {
 	// free state
 	engine.game_state_destroy(state)
 }
-
-
 ```
 
 # License
