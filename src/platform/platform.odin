@@ -253,7 +253,72 @@ clear_screen :: proc(color: engine.Color) {
 }
 
 draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
-	logger(.ERROR, "NOT IMPLEMENTED")
+
+	gl_color := engine_color_to_gl_color(color)
+	t_x, t_y, t_s := camera_translation_position(circle.position.x, circle.position.y, 1)
+
+
+	// The idea will be to draw triangles around a center point, just need an algorithm for this
+
+	renderer_push_vertex(
+		renderer,
+		{0.5, -0.5, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+
+	renderer_push_vertex(
+		renderer,
+		{0.5, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+
+	renderer_push_vertex(
+		renderer,
+		{0.8, -0.1, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	defer renderer_clear_vertices(renderer)
+
+	projection_location := gl.GetUniformLocation(
+		renderer.shader_pipeline.vertex_shader,
+		"vProjection",
+	)
+	if projection_location < 0 {
+		logger(.ERROR, "Failed to find location")
+		return
+	}
+
+	gl.BindTextureUnit(0, placeholder_texture.target)
+
+	transformation := renderer_get_transformation_matrix(
+		renderer^,
+		t_x,
+		t_y,
+		circle.radius,
+		circle.radius,
+		t_s,
+	)
+	gl.ProgramUniformMatrix4fv(
+		renderer.shader_pipeline.vertex_shader,
+		projection_location,
+		1,
+		gl.FALSE,
+		&transformation[0][0],
+	)
+
+	gl.BindVertexArray(renderer.vao)
+	gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo)
+	gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		0,
+		renderer.vertices_count * size_of(RendererVertex),
+		&renderer.vertices_data,
+	)
+	gl.DrawArrays(gl.TRIANGLES, 0, i32(renderer.vertices_count))
+
 }
 
 draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
