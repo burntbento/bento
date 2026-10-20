@@ -6,6 +6,8 @@
 
 2D Game Engine written in Odin with SDL3 and OpenGL.
 
+![demo](media/demo.gif)
+
 # Installation
 
 ## Dependencies
