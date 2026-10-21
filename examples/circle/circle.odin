@@ -65,7 +65,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 
 
 	// set radius
-	radius := f64(screen_width) * 0.25
+	radius := f64(screen_width) * 0.25 * 0.5
 
 	// flush screen with a blank color
 	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
@@ -73,11 +73,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	// draw red rectangle in the center of the screen
 	engine.cmd_draw_circle(
 		state.cmdbuf,
-		engine.circle(
-			f64(screen_width / 2) - radius / 2,
-			f64(screen_height / 2) - radius / 2,
-			radius,
-		),
+		engine.circle(f64(screen_width / 2) - radius, f64(screen_height / 2) - radius, radius),
 		engine.RED,
 	)
 	return state.cmdbuf

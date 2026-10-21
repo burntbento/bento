@@ -257,29 +257,37 @@ draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
 	gl_color := engine_color_to_gl_color(color)
 	t_x, t_y, t_s := camera_translation_position(circle.position.x, circle.position.y, 1)
 
+	angle := 2 * math.PI / NUM_CIRCLE_SEGMENTS
 
-	// The idea will be to draw triangles around a center point, just need an algorithm for this
+	rot: f32 = 0 // track rotation of angle
+	radius: f32 = 0.5 // should make this a constant
+	for _ in 0 ..< NUM_CIRCLE_SEGMENTS {
+		x := radius * math.cos(rot)
+		y := radius * math.sin(rot)
+		renderer_push_vertex(
+			renderer,
+			{x + 0.5, y - 0.5, 0, 1},
+			{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+			{0, 0},
+		)
 
-	renderer_push_vertex(
-		renderer,
-		{0.5, -0.5, 0, 1},
-		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
-		{0, 0},
-	)
+		rot += f32(angle)
+		x = radius * math.cos(rot)
+		y = radius * math.sin(rot)
+		renderer_push_vertex(
+			renderer,
+			{x + 0.5, y - 0.5, 0, 1},
+			{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+			{0, 0},
+		)
 
-	renderer_push_vertex(
-		renderer,
-		{0.5, 0, 0, 1},
-		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
-		{0, 0},
-	)
-
-	renderer_push_vertex(
-		renderer,
-		{0.8, -0.1, 0, 1},
-		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
-		{0, 0},
-	)
+		renderer_push_vertex(
+			renderer,
+			{0.5, -0.5, 0, 1},
+			{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+			{0, 0},
+		)
+	}
 	defer renderer_clear_vertices(renderer)
 
 	projection_location := gl.GetUniformLocation(
@@ -297,8 +305,8 @@ draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
 		renderer^,
 		t_x,
 		t_y,
-		circle.radius,
-		circle.radius,
+		circle.radius * 2,
+		circle.radius * 2,
 		t_s,
 	)
 	gl.ProgramUniformMatrix4fv(
