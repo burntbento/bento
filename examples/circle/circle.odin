@@ -70,7 +70,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	// flush screen with a blank color
 	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
 
-	// draw red rectangle in the center of the screen
+	// draw red circle in the center of the screen
 	engine.cmd_draw_circle(
 		state.cmdbuf,
 		engine.circle(f64(screen_width / 2) - radius, f64(screen_height / 2) - radius, radius),
