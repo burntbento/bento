@@ -248,8 +248,10 @@ get_page_size :: proc() -> i32 {
 
 clear_screen :: proc(color: engine.Color) {
 	gl_color := engine_color_to_gl_color(color)
-	gl.ClearColor(gl_color.r, gl_color.g, gl_color.b, gl_color.a)
-	gl.Clear(gl.COLOR_BUFFER_BIT)
+
+	// probably should be a function?
+	gl_color_fv := []f32{gl_color.r, gl_color.g, gl_color.b, gl_color.a}
+	gl.ClearBufferfv(gl.COLOR, 0, &gl_color_fv[0])
 }
 
 draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
