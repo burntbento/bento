@@ -1360,8 +1360,8 @@ priorities_to_sdl :: proc(level: engine.LoggerLevels) -> sdl.LogPriority {
 // -- Logger -- //
 
 // load shaders
-basic_vert_src := #load("../../shaders/basic.vert.glsl")
-basic_frag_src := #load("../../shaders/basic.frag.glsl")
+basic_vert_src := #load("../../shaders/source/basic.vert.glsl")
+basic_frag_src := #load("../../shaders/source/basic.frag.glsl")
 
 init_logger :: proc(level: engine.LoggerLevels) {
 	sdl.SetLogPriorities(priorities_to_sdl(level))
