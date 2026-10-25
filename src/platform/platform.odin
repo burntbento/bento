@@ -292,7 +292,10 @@ draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
 	}
 	defer renderer_clear_vertices(renderer)
 
-	projection_location := gl.GetUniformLocation(renderer.shader_program.program, "vProjection")
+	projection_location := gl.GetUniformLocation(
+		renderer.shader_program.vertex_shader_program,
+		"vProjection",
+	)
 	if projection_location < 0 {
 		logger(.ERROR, "Failed to find location")
 		return
@@ -309,7 +312,7 @@ draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
 		t_s,
 	)
 	gl.ProgramUniformMatrix4fv(
-		renderer.shader_program.program,
+		renderer.shader_program.vertex_shader_program,
 		projection_location,
 		1,
 		gl.FALSE,
@@ -371,7 +374,10 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	)
 	defer renderer_clear_vertices(renderer)
 
-	projection_location := gl.GetUniformLocation(renderer.shader_program.program, "vProjection")
+	projection_location := gl.GetUniformLocation(
+		renderer.shader_program.vertex_shader_program,
+		"vProjection",
+	)
 	if projection_location < 0 {
 		logger(.ERROR, "Failed to find location")
 		return
@@ -388,7 +394,7 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 		t_s,
 	)
 	gl.ProgramUniformMatrix4fv(
-		renderer.shader_program.program,
+		renderer.shader_program.vertex_shader_program,
 		projection_location,
 		1,
 		gl.FALSE,
@@ -437,7 +443,10 @@ draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 	)
 	defer renderer_clear_vertices(renderer)
 
-	projection_location := gl.GetUniformLocation(renderer.shader_program.program, "vProjection")
+	projection_location := gl.GetUniformLocation(
+		renderer.shader_program.vertex_shader_program,
+		"vProjection",
+	)
 	if projection_location < 0 {
 		logger(.ERROR, "Failed to find location")
 		return
@@ -453,7 +462,7 @@ draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 		t_s,
 	)
 	gl.ProgramUniformMatrix4fv(
-		renderer.shader_program.program,
+		renderer.shader_program.vertex_shader_program,
 		projection_location,
 		1,
 		gl.FALSE,
@@ -557,7 +566,10 @@ draw_sprite :: proc(
 	)
 	defer renderer_clear_vertices(renderer)
 
-	projection_location := gl.GetUniformLocation(renderer.shader_program.program, "vProjection")
+	projection_location := gl.GetUniformLocation(
+		renderer.shader_program.vertex_shader_program,
+		"vProjection",
+	)
 	if projection_location < 0 {
 		logger(.ERROR, "Failed to find location")
 		return
@@ -579,7 +591,7 @@ draw_sprite :: proc(
 		f64(stretch_y),
 	)
 	gl.ProgramUniformMatrix4fv(
-		renderer.shader_program.program,
+		renderer.shader_program.vertex_shader_program,
 		projection_location,
 		1,
 		gl.FALSE,
@@ -1401,16 +1413,16 @@ RendererVertex :: struct {
 	uv:       glsl.vec2,
 }
 
-ShaderProgram :: struct {
-	program:         u32,
-	vertex_shader:   u32,
-	fragment_shader: u32,
+ShaderProgramPipeline :: struct {
+	pipeline:                u32,
+	vertex_shader_program:   u32,
+	fragment_shader_program: u32,
 }
 
 Renderer :: struct {
 	vao:            u32,
 	vbo:            u32,
-	shader_program: ShaderProgram,
+	shader_program: ShaderProgramPipeline,
 	projection:     glsl.mat4,
 	vertices_data:  [MAX_VERTICES]RendererVertex,
 	vertices_count: int,
@@ -1485,10 +1497,35 @@ renderer_init :: proc() -> ^Renderer {
 	// create shader program
 	vert_src := cstring(&basic_vert_src[0])
 	frag_src := cstring(&basic_frag_src[0])
-	r.shader_program = create_shader_program(&vert_src, &frag_src)
 
-	// activate
-	gl.UseProgram(r.shader_program.program)
+	ok: bool
+	r.shader_program.vertex_shader_program, ok = create_shader_program(gl.VERTEX_SHADER, &vert_src)
+	if !ok {
+		panic("Failed to create basic vertex shader")
+	}
+
+	r.shader_program.fragment_shader_program, ok = create_shader_program(
+		gl.FRAGMENT_SHADER,
+		&frag_src,
+	)
+	if !ok {
+		panic("Failed to create basic fragment shader")
+	}
+
+	gl.CreateProgramPipelines(1, &r.shader_program.pipeline)
+
+	gl.UseProgramStages(
+		r.shader_program.pipeline,
+		gl.VERTEX_SHADER_BIT,
+		r.shader_program.vertex_shader_program,
+	)
+	gl.UseProgramStages(
+		r.shader_program.pipeline,
+		gl.FRAGMENT_SHADER_BIT,
+		r.shader_program.fragment_shader_program,
+	)
+
+	gl.BindProgramPipeline(r.shader_program.pipeline)
 
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
@@ -1551,7 +1588,7 @@ renderer_clear_vertices :: proc(r: ^Renderer) {
 }
 
 renderer_destroy :: proc(renderer: ^Renderer) {
-	destroy_shader_program(renderer.shader_program)
+	destroy_shader_program(&renderer.shader_program)
 	gl.DeleteVertexArrays(1, &renderer.vao)
 	gl.DeleteBuffers(1, &renderer.vbo)
 	free(renderer)
@@ -1559,62 +1596,25 @@ renderer_destroy :: proc(renderer: ^Renderer) {
 
 // -- Shader Program -- //
 
-create_shader_program :: proc(
-	vertex_source: ^cstring,
-	fragment_source: ^cstring,
-) -> ShaderProgram {
-
-	shader_program: ShaderProgram
-	shader_program.program = gl.CreateProgram()
-	// vertex shader
-	shader_program.vertex_shader = create_shader(gl.VERTEX_SHADER, vertex_source)
-
-	// fragment shader
-	shader_program.fragment_shader = create_shader(gl.FRAGMENT_SHADER, fragment_source)
-
-	// attach
-	gl.AttachShader(shader_program.program, shader_program.vertex_shader)
-	defer gl.DetachShader(shader_program.program, shader_program.vertex_shader)
-
-	gl.AttachShader(shader_program.program, shader_program.fragment_shader)
-	defer gl.DetachShader(shader_program.program, shader_program.fragment_shader)
-
-	// link
-	gl.LinkProgram(shader_program.program)
-
-	// check
-	link_status: i32
-	gl.GetProgramiv(shader_program.program, gl.LINK_STATUS, &link_status)
-	if link_status == 1 {
-		info_length: i32
-		gl.GetProgramiv(shader_program.program, gl.INFO_LOG_LENGTH, &info_length)
-		buf := make([]u8, info_length, context.temp_allocator)
-		gl.GetProgramInfoLog(shader_program.program, info_length, &info_length, raw_data(buf))
-		logger(.ERROR, "Failed to link shader: %s", buf)
-	}
-	return shader_program
-}
-
-destroy_shader_program :: proc(shader_program: ShaderProgram) {
-	gl.DeleteShader(shader_program.vertex_shader)
-	gl.DeleteShader(shader_program.fragment_shader)
-	gl.DeleteProgram(shader_program.program)
-}
-
-
-create_shader :: proc(type: u32, source: ^cstring) -> u32 {
-	shader := gl.CreateShader(type)
-	gl.ShaderSource(shader, 1, source, nil)
-	gl.CompileShader(shader)
+create_shader_program :: proc(type: u32, shader_source: ^cstring) -> (u32, bool) {
+	shader: u32
+	shader = gl.CreateShaderProgramv(type, 1, shader_source)
+	gl.ProgramParameteri(shader, gl.PROGRAM_SEPARABLE, i32(gl.TRUE))
 	ok: i32
-	gl.GetShaderiv(shader, gl.COMPILE_STATUS, &ok)
-	if ok != 1 {
-		log_length: i32
-		gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &log_length)
-		buf := make([]u8, log_length, context.temp_allocator)
-		gl.GetShaderInfoLog(shader, log_length, &log_length, raw_data(buf))
-		logger(.ERROR, "Shader failed to compile: %s", buf)
-		return 0
+	gl.GetProgramiv(shader, gl.LINK_STATUS, &ok)
+	if ok == 0 {
+		log: i32
+		gl.GetProgramiv(shader, gl.INFO_LOG_LENGTH, &log)
+		buf := make([]u8, log, context.temp_allocator)
+		gl.GetProgramInfoLog(shader, log, &log, raw_data(buf))
+		logger(.ERROR, "Failed to link shader program: %s", buf)
+		return 0, false
 	}
-	return shader
+	return shader, true
+}
+
+destroy_shader_program :: proc(shader_program: ^ShaderProgramPipeline) {
+	gl.DeleteProgram(shader_program.vertex_shader_program)
+	gl.DeleteProgram(shader_program.fragment_shader_program)
+	gl.DeleteProgramPipelines(1, &shader_program.pipeline)
 }
