@@ -1497,9 +1497,11 @@ renderer_init :: proc() -> ^Renderer {
 	// create shader program
 	vert_src := cstring(&basic_vert_src[0])
 	r.shader_pipeline.vertex_shader = gl.CreateShaderProgramv(gl.VERTEX_SHADER, 1, &vert_src)
+	gl.ProgramParameteri(r.shader_pipeline.vertex_shader, gl.PROGRAM_SEPARABLE, i32(gl.TRUE))
 
 	frag_src := cstring(&basic_frag_src[0])
 	r.shader_pipeline.fragment_shader = gl.CreateShaderProgramv(gl.FRAGMENT_SHADER, 1, &frag_src)
+	gl.ProgramParameteri(r.shader_pipeline.fragment_shader, gl.PROGRAM_SEPARABLE, i32(gl.TRUE))
 
 	gl.CreateProgramPipelines(1, &r.shader_pipeline.pipeline)
 
