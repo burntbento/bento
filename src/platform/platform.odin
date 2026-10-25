@@ -39,6 +39,7 @@ gamepad: ^sdl.Gamepad // for gamepad
 platform_storage: ^PlatformStorage // sdl platform_storage interface
 audio_device: sdl.AudioDeviceID // sdl audio device
 render_cam: ^engine.Camera2D // sdl renderer
+framebuffer: ^FrameBufferObject // frame buffer to swap
 
 
 text_buffer: [64]u8 // text buffer for text input not key input
@@ -215,6 +216,9 @@ init :: proc(config: engine.PlatformConfig) {
 	w, h := get_window_size()
 	create_font_texture(w, h)
 
+	// framebuffer
+	framebuffer = create_framebufferobject()
+
 	// storage
 	platform_storage_init()
 
@@ -234,9 +238,18 @@ init :: proc(config: engine.PlatformConfig) {
 
 }
 
-begin_frame :: proc() {}
+begin_frame :: proc() {
+	attach_framebufferobject(framebuffer)
+}
 
 end_frame :: proc() {
+	detach_framebufferobject()
+
+	// clear screen buffer
+	gl_color := engine_color_to_gl_color(engine.WHITE)
+	gl_color_fv := []f32{gl_color.r, gl_color.g, gl_color.b, gl_color.a}
+	gl.ClearBufferfv(gl.COLOR, 0, &gl_color_fv[0])
+
 	if !sdl.GL_SwapWindow(window) {
 		logger(.ERROR, "Failed to swap buffers")
 	}
@@ -248,10 +261,8 @@ get_page_size :: proc() -> i32 {
 
 clear_screen :: proc(color: engine.Color) {
 	gl_color := engine_color_to_gl_color(color)
-
-	// probably should be a function?
-	gl_color_fv := []f32{gl_color.r, gl_color.g, gl_color.b, gl_color.a}
-	gl.ClearBufferfv(gl.COLOR, 0, &gl_color_fv[0])
+	gl.ClearColor(gl_color.r, gl_color.g, gl_color.b, gl_color.a)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 }
 
 draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
@@ -862,6 +873,9 @@ shutdown :: proc() {
 
 	// destory textures
 	destroy_all_textures()
+
+	// destroy framebuffer
+	destroy_framebufferobject(framebuffer)
 
 	// destory fonts
 	destroy_all_fonts()
@@ -1617,4 +1631,56 @@ destroy_shader_program :: proc(shader_program: ^ShaderProgramPipeline) {
 	gl.DeleteProgram(shader_program.vertex_shader_program)
 	gl.DeleteProgram(shader_program.fragment_shader_program)
 	gl.DeleteProgramPipelines(1, &shader_program.pipeline)
+}
+
+
+// -- Frame Buffer -- //
+
+FrameBufferObject :: struct {
+	buffer:               u32,
+	texture:              u32,
+	texture_w, texture_h: int,
+}
+
+create_framebufferobject :: proc() -> ^FrameBufferObject {
+
+	// create struct
+	fbo := new(FrameBufferObject)
+
+	// create target texture
+	gl.CreateTextures(gl.TEXTURE_2D, 1, &fbo.texture)
+
+	gl.TextureParameteri(fbo.texture, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(fbo.texture, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(fbo.texture, gl.TEXTURE_MIN_FILTER, platform_config.scale_mode)
+	gl.TextureParameteri(fbo.texture, gl.TEXTURE_MAG_FILTER, platform_config.scale_mode)
+
+	fbo.texture_w, fbo.texture_h = get_window_size()
+	gl.TextureStorage2D(fbo.texture, 1, gl.RGBA8, i32(fbo.texture_w), i32(fbo.texture_h))
+
+	// create frame buffers
+	gl.CreateFramebuffers(1, &fbo.buffer)
+	gl.NamedFramebufferTexture(fbo.buffer, gl.COLOR_ATTACHMENT0, fbo.texture, 0)
+
+	return fbo
+}
+
+destroy_framebufferobject :: proc(fbo: ^FrameBufferObject) {
+	gl.DeleteTextures(1, &fbo.texture)
+	gl.DeleteFramebuffers(1, &fbo.buffer)
+	free(fbo)
+}
+
+attach_framebufferobject :: proc(fbo: ^FrameBufferObject) {
+	// bind
+	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, fbo.buffer)
+}
+
+present_framebufferobject :: proc(fbo: ^FrameBufferObject) {
+
+}
+
+detach_framebufferobject :: proc() {
+	// push to screen buffer
+	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
 }
