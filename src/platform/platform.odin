@@ -1552,6 +1552,16 @@ renderer_init :: proc() -> ^Renderer {
 
 renderer_push_vertex :: proc(r: ^Renderer, position: glsl.vec4, color: glsl.vec4, uv: glsl.vec2) {
 	count := r.vertices_count
+	if count > MAX_TRIANGLES {
+		logger(
+			.ERROR,
+			"Reached maximum triangle count of %d, current count of %s",
+			MAX_TRIANGLES,
+			count,
+		)
+		return
+	}
+
 	renderer.vertices_data[count].position = position
 	renderer.vertices_data[count].color = color
 	renderer.vertices_data[count].uv = uv
