@@ -40,7 +40,7 @@ platform_storage: ^PlatformStorage // sdl platform_storage interface
 audio_device: sdl.AudioDeviceID // sdl audio device
 render_cam: ^engine.Camera2D // sdl renderer
 framebuffer: ^FrameBufferObject // frame buffer to swap
-window_width, window_height: int
+window_width, window_height: int // window width and height, it should adjust on resize
 
 
 text_buffer: [64]u8 // text buffer for text input not key input
@@ -217,11 +217,10 @@ init :: proc(config: engine.PlatformConfig) {
 	create_placeholder_texture()
 
 	// create font texture
-	w, h := get_window_size()
-	create_font_texture(w, h)
+	create_font_texture(window_width, window_height)
 
 	// framebuffer
-	framebuffer = create_framebufferobject()
+	framebuffer = create_framebufferobject(window_width, window_height)
 
 	// storage
 	platform_storage_init()
@@ -1510,8 +1509,7 @@ renderer_init :: proc() -> ^Renderer {
 	gl.VertexArrayAttribBinding(r.vao, 2, 0)
 
 	// NOTE: this might bite me
-	w, h := get_window_size()
-	r.projection = glsl.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
+	r.projection = glsl.mat4Ortho3d(0, f32(window_width), f32(window_height), 0, -1, 1)
 
 	// create shader program
 	vert_src := cstring(&basic_vert_src[0])
@@ -1641,17 +1639,20 @@ destroy_shader_program :: proc(shader_program: ^ShaderProgramPipeline) {
 
 // -- Frame Buffer -- //
 
+// I might want to change this later to a frame buffer stack
+// meaning that i can push and pop the stack with multiple
+// canvases
 FrameBufferObject :: struct {
 	buffer:         u32,
 	texture_handle: int,
 }
 
-create_framebufferobject :: proc() -> ^FrameBufferObject {
+create_framebufferobject :: proc(width, height: int) -> ^FrameBufferObject {
 
 	// create struct
 	fbo := new(FrameBufferObject)
 
-	fbo.texture_handle = create_texture(window_width, window_height, 4, 0, nil)
+	fbo.texture_handle = create_texture(width, height, 4, 0, nil)
 	texture_data := get_texture(fbo.texture_handle)
 
 	// create frame buffers
