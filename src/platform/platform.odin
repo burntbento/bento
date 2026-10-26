@@ -11,6 +11,9 @@ import gl "vendor:OpenGL"
 import sdl "vendor:sdl3"
 import ttf "vendor:sdl3/ttf"
 
+
+// NOTE: Should I use a arena for any allocations that live for the lifetime of the game?
+
 PlatformStorage :: struct {
 	title:    ^sdl.Storage,
 	writable: ^sdl.Storage,
@@ -1651,7 +1654,7 @@ destroy_shader_program :: proc(shader_program: ^ShaderProgramPipeline) {
 
 // I might want to change this later to a frame buffer stack
 // meaning that i can push and pop the stack with multiple
-// canvases
+// canvases, but this means now i can do post processing.
 FrameBufferObject :: struct {
 	buffer:         u32,
 	texture_handle: int,
