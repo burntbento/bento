@@ -11,6 +11,9 @@ import gl "vendor:OpenGL"
 import sdl "vendor:sdl3"
 import ttf "vendor:sdl3/ttf"
 
+
+// NOTE: Should I use a arena for any allocations that live for the lifetime of the game?
+
 PlatformStorage :: struct {
 	title:    ^sdl.Storage,
 	writable: ^sdl.Storage,
@@ -39,6 +42,8 @@ gamepad: ^sdl.Gamepad // for gamepad
 platform_storage: ^PlatformStorage // sdl platform_storage interface
 audio_device: sdl.AudioDeviceID // sdl audio device
 render_cam: ^engine.Camera2D // sdl renderer
+framebuffer: ^FrameBufferObject // frame buffer to swap
+window_width, window_height: int // window width and height, it should adjust on resize
 
 
 text_buffer: [64]u8 // text buffer for text input not key input
@@ -181,6 +186,9 @@ init :: proc(config: engine.PlatformConfig) {
 		logger(.ERROR, "SDL failed to sync window: %s", sdl.GetError())
 	}
 
+	window_width, window_height = get_window_size()
+	logger(.DEBUG, "Window Size: %d %d", window_width, window_height)
+
 	gl_context = sdl.GL_CreateContext(window)
 	if gl_context == nil {
 		logger(.ERROR, "SDL failed to create OpenGL Context")
@@ -212,8 +220,10 @@ init :: proc(config: engine.PlatformConfig) {
 	create_placeholder_texture()
 
 	// create font texture
-	w, h := get_window_size()
-	create_font_texture(w, h)
+	create_font_texture(window_width, window_height)
+
+	// framebuffer
+	framebuffer = create_framebufferobject(window_width, window_height)
 
 	// storage
 	platform_storage_init()
@@ -234,9 +244,19 @@ init :: proc(config: engine.PlatformConfig) {
 
 }
 
-begin_frame :: proc() {}
+begin_frame :: proc() {
+	attach_framebufferobject(framebuffer)
+}
 
 end_frame :: proc() {
+	detach_framebufferobject()
+
+	// clear screen buffer
+	clear_screen(engine.WHITE)
+
+	// present frame buffer
+	present_framebufferobject(framebuffer)
+
 	if !sdl.GL_SwapWindow(window) {
 		logger(.ERROR, "Failed to swap buffers")
 	}
@@ -248,10 +268,8 @@ get_page_size :: proc() -> i32 {
 
 clear_screen :: proc(color: engine.Color) {
 	gl_color := engine_color_to_gl_color(color)
-
-	// probably should be a function?
-	gl_color_fv := []f32{gl_color.r, gl_color.g, gl_color.b, gl_color.a}
-	gl.ClearBufferfv(gl.COLOR, 0, &gl_color_fv[0])
+	gl.ClearColor(gl_color.r, gl_color.g, gl_color.b, gl_color.a)
+	gl.Clear(gl.COLOR_BUFFER_BIT)
 }
 
 draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
@@ -862,6 +880,9 @@ shutdown :: proc() {
 
 	// destory textures
 	destroy_all_textures()
+
+	// destroy framebuffer
+	destroy_framebufferobject(framebuffer)
 
 	// destory fonts
 	destroy_all_fonts()
@@ -1491,8 +1512,7 @@ renderer_init :: proc() -> ^Renderer {
 	gl.VertexArrayAttribBinding(r.vao, 2, 0)
 
 	// NOTE: this might bite me
-	w, h := get_window_size()
-	r.projection = glsl.mat4Ortho3d(0, f32(w), f32(h), 0, -1, 1)
+	r.projection = glsl.mat4Ortho3d(0, f32(window_width), f32(window_height), 0, -1, 1)
 
 	// create shader program
 	vert_src := cstring(&basic_vert_src[0])
@@ -1535,6 +1555,16 @@ renderer_init :: proc() -> ^Renderer {
 
 renderer_push_vertex :: proc(r: ^Renderer, position: glsl.vec4, color: glsl.vec4, uv: glsl.vec2) {
 	count := r.vertices_count
+	if count > MAX_TRIANGLES {
+		logger(
+			.ERROR,
+			"Reached maximum triangle count of %d, current count of %s",
+			MAX_TRIANGLES,
+			count,
+		)
+		return
+	}
+
 	renderer.vertices_data[count].position = position
 	renderer.vertices_data[count].color = color
 	renderer.vertices_data[count].uv = uv
@@ -1617,4 +1647,61 @@ destroy_shader_program :: proc(shader_program: ^ShaderProgramPipeline) {
 	gl.DeleteProgram(shader_program.vertex_shader_program)
 	gl.DeleteProgram(shader_program.fragment_shader_program)
 	gl.DeleteProgramPipelines(1, &shader_program.pipeline)
+}
+
+
+// -- Frame Buffer -- //
+
+// I might want to change this later to a frame buffer stack
+// meaning that i can push and pop the stack with multiple
+// canvases, but this means now i can do post processing.
+FrameBufferObject :: struct {
+	buffer:         u32,
+	texture_handle: int,
+}
+
+create_framebufferobject :: proc(width, height: int) -> ^FrameBufferObject {
+
+	// create struct
+	fbo := new(FrameBufferObject)
+
+	fbo.texture_handle = create_texture(width, height, 4, 0, nil)
+	texture_data := get_texture(fbo.texture_handle)
+
+	// create frame buffers
+	gl.CreateFramebuffers(1, &fbo.buffer)
+	gl.NamedFramebufferTexture(fbo.buffer, gl.COLOR_ATTACHMENT0, texture_data.target, 0)
+
+	return fbo
+}
+
+destroy_framebufferobject :: proc(fbo: ^FrameBufferObject) {
+	gl.DeleteFramebuffers(1, &fbo.buffer)
+	free(fbo)
+}
+
+attach_framebufferobject :: proc(fbo: ^FrameBufferObject) {
+	// bind
+	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, fbo.buffer)
+}
+
+detach_framebufferobject :: proc() {
+	// push to screen buffer
+	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
+}
+
+present_framebufferobject :: proc(fbo: ^FrameBufferObject) {
+	draw_sprite(
+		engine.vector2(0, 0),
+		1,
+		0,
+		engine.vector2(0, 0),
+		fbo.texture_handle,
+		engine.rect(0, 0, f64(window_width), f64(window_height)),
+		engine.WHITE,
+		false,
+		true,
+		0,
+		0,
+	)
 }
