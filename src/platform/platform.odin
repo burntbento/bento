@@ -60,7 +60,7 @@ stream_count := 0 // current stream count, could also migrate to dynamic array
 // fonts
 debug_font_data := #load("../../assets/fonts/1980v23P01.ttf")
 debug_font_handle: int
-debug_font_size :: 64
+debug_font_size :: 16
 
 fonts: [dynamic]^ttf.Font // dynamic array of ttf fonts
 font_texture_handle: int
@@ -644,6 +644,19 @@ measure_text :: proc(font_handle: int, text: string) -> (width: int, height: int
 }
 
 draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, color: engine.Color) {
+	_draw_text(position, text, font_handle, 1, color)
+}
+
+// NOTE: making a wrapper for the debug text. This is a preloaded font so that
+// you can quickly print to screen without loading your own.
+@(private)
+_draw_text :: proc(
+	position: engine.Vector2,
+	text: string,
+	font_handle: int,
+	scale: f64,
+	color: engine.Color,
+) {
 
 	font := get_font(font_handle)
 	font_texture := get_texture(font_texture_handle)
@@ -679,7 +692,7 @@ draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, colo
 
 	draw_sprite(
 		position,
-		1,
+		scale,
 		0,
 		engine.vector2(0, 0),
 		font_texture_handle,
@@ -694,7 +707,7 @@ draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, colo
 
 
 draw_debug_text :: proc(position: engine.Vector2, text: string, scale: f32, color: engine.Color) {
-	draw_text(position, text, debug_font_handle, color)
+	_draw_text(position, text, debug_font_handle, f64(scale), color)
 }
 
 attach_camera :: proc(cam: ^engine.Camera2D) {
