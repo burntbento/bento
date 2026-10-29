@@ -9,6 +9,9 @@ run-example:
 run-all:
 	odin run ./examples/all $(flags)
 
+test:
+	odin test ./tests --all-packages $(flags)
+
 
 
 

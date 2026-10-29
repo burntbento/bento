@@ -58,6 +58,10 @@ streams: [MAX_CONCURRENT_AUDIO_STREAMS]^sdl.AudioStream // array of audio stream
 stream_count := 0 // current stream count, could also migrate to dynamic array
 
 // fonts
+debug_font_data := #load("../../assets/fonts/1980v23P01.ttf")
+debug_font_handle: int
+debug_font_size :: 16
+
 fonts: [dynamic]^ttf.Font // dynamic array of ttf fonts
 font_texture_handle: int
 text_engine: ^ttf.TextEngine // pointer to sdl text engine
@@ -241,6 +245,8 @@ init :: proc(config: engine.PlatformConfig) {
 	}
 	text_engine = ttf.CreateSurfaceTextEngine()
 	logger(.DEBUG, "Created SDL3_ttf engine, version: %d", ttf.Version())
+
+	debug_font_handle = load_debug_font(debug_font_size)
 
 }
 
@@ -638,6 +644,19 @@ measure_text :: proc(font_handle: int, text: string) -> (width: int, height: int
 }
 
 draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, color: engine.Color) {
+	_draw_text(position, text, font_handle, 1, color)
+}
+
+// NOTE: making a wrapper for the debug text. This is a preloaded font so that
+// you can quickly print to screen without loading your own.
+@(private)
+_draw_text :: proc(
+	position: engine.Vector2,
+	text: string,
+	font_handle: int,
+	scale: f64,
+	color: engine.Color,
+) {
 
 	font := get_font(font_handle)
 	font_texture := get_texture(font_texture_handle)
@@ -673,7 +692,7 @@ draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, colo
 
 	draw_sprite(
 		position,
-		1,
+		scale,
 		0,
 		engine.vector2(0, 0),
 		font_texture_handle,
@@ -687,7 +706,9 @@ draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, colo
 }
 
 
-draw_debug_text :: proc(position: engine.Vector2, text: string, scale: f32, color: engine.Color) {}
+draw_debug_text :: proc(position: engine.Vector2, text: string, scale: f32, color: engine.Color) {
+	_draw_text(position, text, debug_font_handle, f64(scale), color)
+}
 
 attach_camera :: proc(cam: ^engine.Camera2D) {
 	render_cam = cam
@@ -1271,6 +1292,24 @@ load_font :: proc(path: string, size: f32) -> int {
 		logger(.ERROR, "SDL could not load font: %s", sdl.GetError())
 		return -1
 	}
+	append(&fonts, font)
+	return len(fonts) - 1
+}
+
+@(private)
+load_debug_font :: proc(size: f32) -> int {
+	io := sdl.IOFromConstMem(&debug_font_data[0], len(debug_font_data))
+	if io == nil {
+		logger(.ERROR, "Failed to create io stream")
+		return -1
+	}
+
+	font := ttf.OpenFontIO(io, true, size)
+	if font == nil {
+		logger(.ERROR, "SDL could not load font: %s", sdl.GetError())
+		return -1
+	}
+	logger(.DEBUG, "Loaded debug font successfully")
 	append(&fonts, font)
 	return len(fonts) - 1
 }
