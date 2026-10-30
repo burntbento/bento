@@ -317,7 +317,7 @@ draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
 	defer renderer_clear_vertices(renderer)
 
 	projection_location := gl.GetUniformLocation(
-		renderer.shader_program.vertex_shader_program,
+		get_shader_program(renderer.shader_program.vertex_shader_handle),
 		"vProjection",
 	)
 	if projection_location < 0 {
@@ -336,7 +336,7 @@ draw_circle :: proc(circle: engine.Circle, color: engine.Color) {
 		t_s,
 	)
 	gl.ProgramUniformMatrix4fv(
-		renderer.shader_program.vertex_shader_program,
+		get_shader_program(renderer.shader_program.vertex_shader_handle),
 		projection_location,
 		1,
 		gl.FALSE,
@@ -399,7 +399,7 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 	defer renderer_clear_vertices(renderer)
 
 	projection_location := gl.GetUniformLocation(
-		renderer.shader_program.vertex_shader_program,
+		get_shader_program(renderer.shader_program.vertex_shader_handle),
 		"vProjection",
 	)
 	if projection_location < 0 {
@@ -418,7 +418,7 @@ draw_rect :: proc(rect: engine.Rect, color: engine.Color) {
 		t_s,
 	)
 	gl.ProgramUniformMatrix4fv(
-		renderer.shader_program.vertex_shader_program,
+		get_shader_program(renderer.shader_program.vertex_shader_handle),
 		projection_location,
 		1,
 		gl.FALSE,
@@ -468,7 +468,7 @@ draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 	defer renderer_clear_vertices(renderer)
 
 	projection_location := gl.GetUniformLocation(
-		renderer.shader_program.vertex_shader_program,
+		get_shader_program(renderer.shader_program.vertex_shader_handle),
 		"vProjection",
 	)
 	if projection_location < 0 {
@@ -486,7 +486,7 @@ draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 		t_s,
 	)
 	gl.ProgramUniformMatrix4fv(
-		renderer.shader_program.vertex_shader_program,
+		get_shader_program(renderer.shader_program.vertex_shader_handle),
 		projection_location,
 		1,
 		gl.FALSE,
@@ -591,7 +591,7 @@ draw_sprite :: proc(
 	defer renderer_clear_vertices(renderer)
 
 	projection_location := gl.GetUniformLocation(
-		renderer.shader_program.vertex_shader_program,
+		get_shader_program(renderer.shader_program.vertex_shader_handle),
 		"vProjection",
 	)
 	if projection_location < 0 {
@@ -615,7 +615,7 @@ draw_sprite :: proc(
 		f64(stretch_y),
 	)
 	gl.ProgramUniformMatrix4fv(
-		renderer.shader_program.vertex_shader_program,
+		get_shader_program(renderer.shader_program.vertex_shader_handle),
 		projection_location,
 		1,
 		gl.FALSE,
@@ -1474,9 +1474,9 @@ RendererVertex :: struct {
 }
 
 ShaderProgramPipeline :: struct {
-	pipeline:                u32,
-	vertex_shader_program:   u32,
-	fragment_shader_program: u32,
+	pipeline:               u32,
+	vertex_shader_handle:   int,
+	fragment_shader_handle: int,
 }
 
 Renderer :: struct {
@@ -1557,31 +1557,20 @@ renderer_init :: proc() -> ^Renderer {
 	vert_src := cstring(&basic_vert_src[0])
 	frag_src := cstring(&basic_frag_src[0])
 
-	ok: bool
-	r.shader_program.vertex_shader_program, ok = create_shader_program(gl.VERTEX_SHADER, &vert_src)
-	if !ok {
-		panic("Failed to create basic vertex shader")
-	}
-
-	r.shader_program.fragment_shader_program, ok = create_shader_program(
-		gl.FRAGMENT_SHADER,
-		&frag_src,
-	)
-	if !ok {
-		panic("Failed to create basic fragment shader")
-	}
+	r.shader_program.vertex_shader_handle = create_shader_program(gl.VERTEX_SHADER, &vert_src)
+	r.shader_program.fragment_shader_handle = create_shader_program(gl.FRAGMENT_SHADER, &frag_src)
 
 	gl.CreateProgramPipelines(1, &r.shader_program.pipeline)
 
 	gl.UseProgramStages(
 		r.shader_program.pipeline,
 		gl.VERTEX_SHADER_BIT,
-		r.shader_program.vertex_shader_program,
+		get_shader_program(r.shader_program.vertex_shader_handle),
 	)
 	gl.UseProgramStages(
 		r.shader_program.pipeline,
 		gl.FRAGMENT_SHADER_BIT,
-		r.shader_program.fragment_shader_program,
+		get_shader_program(r.shader_program.fragment_shader_handle),
 	)
 
 	gl.BindProgramPipeline(r.shader_program.pipeline)
@@ -1665,7 +1654,28 @@ renderer_destroy :: proc(renderer: ^Renderer) {
 
 // -- Shader Program -- //
 
-create_shader_program :: proc(type: u32, shader_source: ^cstring) -> (u32, bool) {
+MAX_SHADERS :: 1024
+shaders: [MAX_SHADERS]u32
+shader_count: int
+
+create_shader_program :: proc(type: u32, shader_source: ^cstring) -> int {
+	shader_handle, ok := _create_shader_program(type, shader_source)
+	if !ok {
+		logger(.ERROR, "Failed to load shader program")
+		return -1
+	}
+	shaders[shader_count] = shader_handle
+	shader_count += 1
+	return shader_count - 1
+}
+
+get_shader_program :: proc(shader_handle: int) -> u32 {
+	// NOTE: should handle out of bounds
+	return shaders[shader_handle]
+}
+
+@(private)
+_create_shader_program :: proc(type: u32, shader_source: ^cstring) -> (u32, bool) {
 	shader: u32
 	shader = gl.CreateShaderProgramv(type, 1, shader_source)
 	gl.ProgramParameteri(shader, gl.PROGRAM_SEPARABLE, i32(gl.TRUE))
@@ -1683,8 +1693,9 @@ create_shader_program :: proc(type: u32, shader_source: ^cstring) -> (u32, bool)
 }
 
 destroy_shader_program :: proc(shader_program: ^ShaderProgramPipeline) {
-	gl.DeleteProgram(shader_program.vertex_shader_program)
-	gl.DeleteProgram(shader_program.fragment_shader_program)
+	for shader in shaders {
+		gl.DeleteProgram(shader)
+	}
 	gl.DeleteProgramPipelines(1, &shader_program.pipeline)
 }
 
