@@ -1557,8 +1557,8 @@ renderer_init :: proc() -> ^Renderer {
 	vert_src := cstring(&basic_vert_src[0])
 	frag_src := cstring(&basic_frag_src[0])
 
-	r.shader_program.vertex_shader_handle = create_shader_program(gl.VERTEX_SHADER, &vert_src)
-	r.shader_program.fragment_shader_handle = create_shader_program(gl.FRAGMENT_SHADER, &frag_src)
+	r.shader_program.vertex_shader_handle = create_shader_program(.VERTEX_SHADER, &vert_src)
+	r.shader_program.fragment_shader_handle = create_shader_program(.FRAGMENT_SHADER, &frag_src)
 
 	gl.CreateProgramPipelines(1, &r.shader_program.pipeline)
 
@@ -1592,7 +1592,6 @@ renderer_push_vertex :: proc(r: ^Renderer, position: glsl.vec4, color: glsl.vec4
 		)
 		return
 	}
-
 	renderer.vertices_data[count].position = position
 	renderer.vertices_data[count].color = color
 	renderer.vertices_data[count].uv = uv
@@ -1658,8 +1657,18 @@ MAX_SHADERS :: 1024
 shaders: [MAX_SHADERS]u32
 shader_count: int
 
-create_shader_program :: proc(type: u32, shader_source: ^cstring) -> int {
-	shader_handle, ok := _create_shader_program(type, shader_source)
+
+create_shader_program :: proc(type: engine.ShaderType, shader_source: ^cstring) -> int {
+
+	// NOTE: should breakout
+	_type: u32
+	switch type {
+	case .VERTEX_SHADER:
+		_type = gl.VERTEX_SHADER
+	case .FRAGMENT_SHADER:
+		_type = gl.FRAGMENT_SHADER
+	}
+	shader_handle, ok := _create_shader_program(_type, shader_source)
 	if !ok {
 		logger(.ERROR, "Failed to load shader program")
 		return -1

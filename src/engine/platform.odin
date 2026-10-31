@@ -76,6 +76,9 @@ Platform :: struct {
 	set_deadzone:          proc(dz: f64),
 	get_deadzone:          proc() -> f64,
 
+	// shaders
+	create_shader_program: proc(type: ShaderType, shader_source: ^cstring) -> int,
+
 	// logger
 	logger:                proc(level: LoggerLevels, msg: string, args: ..any),
 

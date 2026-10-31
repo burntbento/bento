@@ -64,6 +64,7 @@ engine_run :: proc(game_data: ^Game) {
 		start_text_input      = platform.start_text_input,
 		stop_text_input       = platform.stop_text_input,
 		get_text_input_buffer = platform.get_text_input_buffer,
+		create_shader_program = platform.create_shader_program,
 		gamepad_rumble        = platform.gamepad_rumble,
 		set_deadzone          = platform.set_deadzone,
 		get_deadzone          = platform.get_deadzone,
