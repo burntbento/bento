@@ -9,6 +9,9 @@ run-example:
 run-all:
 	odin run ./examples/all $(flags)
 
+build-example:
+	odin build ./examples/$(example)/$(example).odin $(flags) -out:$(example)
+
 test:
 	odin test ./tests --all-packages $(flags)
 
