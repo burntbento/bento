@@ -112,3 +112,7 @@ animation_get_current_frame_dimensions :: proc(anim: ^Animation) -> (int, int) {
 		anim.height * anim.animations[anim.current].row
 
 }
+
+animation_get_current_frame :: proc(anim: ^Animation) -> int {
+	return anim.animations[anim.current].current_frame
+}

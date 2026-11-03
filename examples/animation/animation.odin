@@ -1,7 +1,5 @@
 package animation
 
-// retro_cat.png https://toffeecraft.itch.io/cat-retro
-
 import "bento:engine"
 import "bento:execute"
 
@@ -23,7 +21,7 @@ animation: ^engine.Animation // holds animation state
 main :: proc() {
 	// main proc, set game function pointers
 	platform_config := engine.PlatformConfig {
-		title         = "retro cat",
+		title         = "animation",
 		window_width  = 800,
 		window_height = 600,
 		fullscreen    = false,
@@ -59,14 +57,14 @@ init :: proc(platform: ^engine.Platform) {
 	screen_width, screen_height = state.platform.get_window_size()
 
 	// get texture handle
-	texture_handle, err = engine.texture_load("examples/animation/retro_cats.png", state)
+	texture_handle, err = engine.texture_load("examples/animation/sprite.png", state)
 	if err != nil {
 		panic("failed to load retro_cats")
 	}
 
 	// init animation state
-	animation = engine.animation_new(64, 64)
-	engine.animation_add(animation, "idle", 0, 0, 4, 0.1, true)
+	animation = engine.animation_new(16, 16)
+	engine.animation_add(animation, "idle", 0, 4, 2, 0.3, true)
 	engine.animation_switch(animation, "idle")
 }
 
@@ -85,10 +83,10 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
 
 	// postion centering the sprite based on scale
-	scale: f64 = 4
+	scale: f64 = 10
 	pos := engine.vector2(
-		f64(screen_width) / 2 - 0.5 * 64 * scale,
-		f64(screen_height) / 2 - 0.5 * 64 * scale,
+		f64(screen_width) / 2 - 0.5 * 16 * scale,
+		f64(screen_height) / 2 - 0.5 * 16 * scale,
 	)
 
 	// draw red rectangle in the center of the screen
@@ -99,7 +97,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 		0,
 		engine.vector2(0, 0),
 		texture_handle,
-		engine.rect(f64(animation.animations[animation.current].current_frame * 64), 0, 64, 64),
+		engine.rect(f64(engine.animation_get_current_frame(animation) * 16), 0, 16, 16),
 		engine.WHITE,
 		false,
 		false,
