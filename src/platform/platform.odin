@@ -1016,7 +1016,7 @@ in_between_deadzone :: proc(state: f64) -> bool {
 input_reset :: proc(input: ^engine.GameInput) {
 	mem.set(&input.released, 0, size_of(input.released))
 	mem.set(&input.pressed, 0, size_of(input.released))
-	text_buffer_len = 0
+	// text_buffer_len = 0
 }
 
 update_input :: proc(input: ^engine.GameInput) {
@@ -1334,9 +1334,17 @@ camera_translation_position :: proc(x, y, scale: f64) -> (f64, f64, f64) {
 
 
 // text input
-start_text_input :: proc() {}
+start_text_input :: proc() {
+	if !sdl.StartTextInput(window) {
+		logger(.ERROR, "failed to start text input: %s", sdl.GetError())
+	}
+}
 
-stop_text_input :: proc() {}
+stop_text_input :: proc() {
+	if !sdl.StopTextInput(window) {
+		logger(.ERROR, "failed to stop text input: %s", sdl.GetError())
+	}
+}
 
 get_text_input_buffer :: proc() -> ([64]u8, int) {
 	return text_buffer, text_buffer_len
