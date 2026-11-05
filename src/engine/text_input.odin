@@ -2,7 +2,7 @@ package engine
 
 import "base:runtime"
 import "core:mem"
-import "core:strings"
+@(require) import "core:strings" // not sure why this is saying that no packages use this??
 
 TextInput :: struct($Cap: int) {
 	text_buffer: [Cap]u8,
