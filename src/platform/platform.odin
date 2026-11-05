@@ -666,6 +666,8 @@ _draw_text :: proc(
 	color: engine.Color,
 ) {
 
+	if text == "" do return
+
 	font := get_font(font_handle)
 	font_texture := get_texture(font_texture_handle)
 

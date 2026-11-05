@@ -15,8 +15,7 @@ state: ^engine.GameState
 screen_width: int // width of the screen in pixels
 screen_height: int // height of the screen in pixels
 
-text_buffer: [128]u8
-text_buffer_len: int
+scale :: 4
 
 text_input: ^engine.TextInput(128)
 
@@ -73,6 +72,11 @@ init :: proc(platform: ^engine.Platform) {
 }
 
 update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
+
+	if engine.input_pressed(input, engine.InputType.INPUT_KEY_BACKSPACE) {
+		engine.text_input_pop(text_input)
+	}
+
 	return true
 }
 
@@ -88,22 +92,34 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	delta_buff, delta_len := state.platform.get_text_input_buffer()
 	engine.text_input_push(text_input, &delta_buff[0], delta_len)
 
-	text, _ := engine.text_input_get_string(text_input, state.scratch_allocator)
-
-	w, h := state.platform.measure_text(-1, text)
-	scale := 4
-	if text != "" {
+	if text_input.len == 0 {
+		placeholder := "Start typing!"
+		w, h := state.platform.measure_text(-1, placeholder)
 		engine.cmd_draw_debug_text(
 			state.cmdbuf,
 			engine.vector2(
 				f64(screen_width) / 2 - 0.5 * f64(scale) * f64(w),
 				f64(screen_height) / 2 - 0.5 * f64(scale) * f64(h),
 			),
-			text,
+			placeholder,
 			f32(scale),
-			engine.BLACK,
+			engine.color(engine.BLACK.r, engine.BLACK.g, engine.BLACK.b, 200),
 		)
+		return state.cmdbuf
 	}
+
+	text, _ := engine.text_input_get_string(text_input, state.scratch_allocator)
+	w, h := state.platform.measure_text(-1, text)
+	engine.cmd_draw_debug_text(
+		state.cmdbuf,
+		engine.vector2(
+			f64(screen_width) / 2 - 0.5 * f64(scale) * f64(w),
+			f64(screen_height) / 2 - 0.5 * f64(scale) * f64(h),
+		),
+		text,
+		f32(scale),
+		engine.BLACK,
+	)
 	return state.cmdbuf
 }
 

@@ -30,6 +30,11 @@ text_input_push :: proc(text_input: ^TextInput($Cap), text_delta: rawptr, len: i
 	return true
 }
 
+text_input_pop :: proc(text_input: ^TextInput($Cap)) {
+	if text_input.len == 0 do return
+	text_input.len -= 1
+}
+
 text_input_get_string :: proc(
 	text_input: ^TextInput($Cap),
 	allocator := context.allocator,
