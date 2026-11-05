@@ -2,7 +2,6 @@ package textinput
 
 import "bento:engine"
 import "bento:execute"
-import "core:fmt"
 import "core:mem"
 import vmem "core:mem/virtual"
 
@@ -18,6 +17,8 @@ screen_height: int // height of the screen in pixels
 
 text_buffer: [128]u8
 text_buffer_len: int
+
+text_input: ^engine.TextInput(128)
 
 // -- Main Loop -- //
 
@@ -67,6 +68,8 @@ init :: proc(platform: ^engine.Platform) {
 	screen_width, screen_height = state.platform.get_window_size()
 
 	state.platform.start_text_input()
+
+	text_input = engine.text_input_new(128)
 }
 
 update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
@@ -83,11 +86,9 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
 
 	delta_buff, delta_len := state.platform.get_text_input_buffer()
+	engine.text_input_push(text_input, &delta_buff[0], delta_len)
 
-	mem.copy(&text_buffer[text_buffer_len], &delta_buff[0], delta_len)
-	text_buffer_len += delta_len
-
-	text := fmt.aprintf("%s_", text_buffer[:text_buffer_len], allocator = state.scratch_allocator)
+	text, _ := engine.text_input_get_string(text_input, state.scratch_allocator)
 
 	w, h := state.platform.measure_text(-1, text)
 	scale := 4
@@ -110,6 +111,9 @@ shutdown :: proc() {
 
 	// close text input
 	state.platform.stop_text_input()
+
+	// destroy
+	engine.text_input_destroy(text_input)
 
 	// free state
 	engine.game_state_destroy(state)
