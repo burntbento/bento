@@ -16,6 +16,9 @@ state: ^engine.GameState
 screen_width: int // width of the screen in pixels
 screen_height: int // height of the screen in pixels
 
+text_buffer: [128]u8
+text_buffer_len: int
+
 // -- Main Loop -- //
 
 main :: proc() {
@@ -62,10 +65,11 @@ init :: proc(platform: ^engine.Platform) {
 
 	// fill in screen_width and height
 	screen_width, screen_height = state.platform.get_window_size()
+
+	state.platform.start_text_input()
 }
 
 update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
-	state.platform.start_text_input()
 	return true
 }
 
@@ -78,15 +82,24 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	// flush screen with a blank color
 	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
 
-	text_buffer, text_len := state.platform.get_text_input_buffer()
+	delta_buff, delta_len := state.platform.get_text_input_buffer()
 
-	text := fmt.aprintf("%s", text_buffer[:text_len], allocator = state.scratch_allocator)
-	if text_len != 0 {
+	mem.copy(&text_buffer[text_buffer_len], &delta_buff[0], delta_len)
+	text_buffer_len += delta_len
+
+	text := fmt.aprintf("%s_", text_buffer[:text_buffer_len], allocator = state.scratch_allocator)
+
+	w, h := state.platform.measure_text(-1, text)
+	scale := 4
+	if text != "" {
 		engine.cmd_draw_debug_text(
 			state.cmdbuf,
-			engine.vector2(f64(screen_width) / 2, f64(screen_height) / 2),
+			engine.vector2(
+				f64(screen_width) / 2 - 0.5 * f64(scale) * f64(w),
+				f64(screen_height) / 2 - 0.5 * f64(scale) * f64(h),
+			),
 			text,
-			2,
+			f32(scale),
 			engine.BLACK,
 		)
 	}
@@ -94,6 +107,10 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 }
 
 shutdown :: proc() {
+
+	// close text input
+	state.platform.stop_text_input()
+
 	// free state
 	engine.game_state_destroy(state)
 }

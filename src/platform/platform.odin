@@ -634,13 +634,21 @@ draw_sprite :: proc(
 
 }
 
-measure_text :: proc(font_handle: int, text: string) -> (width: int, height: int) {
-	if font_handle < 0 || font_handle >= len(fonts) do return 0, 0
+@(private)
+_measure_text :: proc(font_handle: int, text: string) -> (int, int) {
 	w, h: c.int
 	if !ttf.GetStringSize(fonts[font_handle], raw_data(text), len(text), &w, &h) {
 		return 0, 0
 	}
 	return int(w), int(h)
+}
+
+measure_text :: proc(font_handle: int, text: string) -> (width: int, height: int) {
+	if font_handle == -1 {
+		return _measure_text(debug_font_handle, text)
+	}
+	if font_handle < 0 || font_handle >= len(fonts) do return 0, 0
+	return _measure_text(font_handle, text)
 }
 
 draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, color: engine.Color) {
@@ -1016,7 +1024,7 @@ in_between_deadzone :: proc(state: f64) -> bool {
 input_reset :: proc(input: ^engine.GameInput) {
 	mem.set(&input.released, 0, size_of(input.released))
 	mem.set(&input.pressed, 0, size_of(input.released))
-	// text_buffer_len = 0
+	text_buffer_len = 0
 }
 
 update_input :: proc(input: ^engine.GameInput) {
