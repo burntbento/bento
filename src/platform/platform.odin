@@ -634,13 +634,21 @@ draw_sprite :: proc(
 
 }
 
-measure_text :: proc(font_handle: int, text: string) -> (width: int, height: int) {
-	if font_handle < 0 || font_handle >= len(fonts) do return 0, 0
+@(private)
+_measure_text :: proc(font_handle: int, text: string) -> (int, int) {
 	w, h: c.int
 	if !ttf.GetStringSize(fonts[font_handle], raw_data(text), len(text), &w, &h) {
 		return 0, 0
 	}
 	return int(w), int(h)
+}
+
+measure_text :: proc(font_handle: int, text: string) -> (width: int, height: int) {
+	if font_handle == -1 {
+		return _measure_text(debug_font_handle, text)
+	}
+	if font_handle < 0 || font_handle >= len(fonts) do return 0, 0
+	return _measure_text(font_handle, text)
 }
 
 draw_text :: proc(position: engine.Vector2, text: string, font_handle: int, color: engine.Color) {
@@ -657,6 +665,8 @@ _draw_text :: proc(
 	scale: f64,
 	color: engine.Color,
 ) {
+
+	if text == "" do return
 
 	font := get_font(font_handle)
 	font_texture := get_texture(font_texture_handle)
@@ -1334,9 +1344,17 @@ camera_translation_position :: proc(x, y, scale: f64) -> (f64, f64, f64) {
 
 
 // text input
-start_text_input :: proc() {}
+start_text_input :: proc() {
+	if !sdl.StartTextInput(window) {
+		logger(.ERROR, "failed to start text input: %s", sdl.GetError())
+	}
+}
 
-stop_text_input :: proc() {}
+stop_text_input :: proc() {
+	if !sdl.StopTextInput(window) {
+		logger(.ERROR, "failed to stop text input: %s", sdl.GetError())
+	}
+}
 
 get_text_input_buffer :: proc() -> ([64]u8, int) {
 	return text_buffer, text_buffer_len
