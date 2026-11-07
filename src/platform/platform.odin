@@ -1762,3 +1762,5 @@ present_framebufferobject :: proc(fbo: ^FrameBufferObject) {
 		0,
 	)
 }
+
+// -- Cursor -- //
