@@ -248,6 +248,10 @@ init :: proc(config: engine.PlatformConfig) {
 
 	debug_font_handle = load_debug_font(debug_font_size)
 
+	// cursor
+	default_cursor_handle = create_cursor()
+	set_cursor(default_cursor_handle)
+
 }
 
 begin_frame :: proc() {
@@ -917,6 +921,9 @@ shutdown :: proc() {
 
 	// destory fonts
 	destroy_all_fonts()
+
+	// destory cursor
+	destroy_all_cursors()
 
 	// shutdown audio
 	sdl.CloseAudioDevice(audio_device)
@@ -1764,3 +1771,30 @@ present_framebufferobject :: proc(fbo: ^FrameBufferObject) {
 }
 
 // -- Cursor -- //
+
+MAX_CURSORS :: 32
+cursors: [32]^sdl.Cursor
+cursor_count: int
+default_cursor_handle: int
+
+
+create_cursor :: proc() -> int {
+	c := sdl.CreateSystemCursor(.DEFAULT)
+	cursors[cursor_count] = c
+	cursor_count += 1
+	return cursor_count
+}
+
+
+set_cursor :: proc(cursor_handle: int) {
+	c := cursors[cursor_handle - 1]
+	if !sdl.SetCursor(c) {
+		logger(.ERROR, "Failed to set sdl cursor: %s", sdl.GetError())
+	}
+}
+
+destroy_all_cursors :: proc() {
+	for cursor in cursors {
+		sdl.DestroyCursor(cursor)
+	}
+}
