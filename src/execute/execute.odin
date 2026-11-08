@@ -158,7 +158,7 @@ engine_run :: proc(game_data: ^Game) {
 				case engine.RenderCommandEndClippingRect:
 					platform.end_clip_rect()
 				case engine.RenderCommandDrawLine:
-					platform.draw_line(v.x1, v.x2, v.y1, v.y2, v.color)
+					platform.draw_line(v.x1, v.y1, v.x2, v.y2, v.color)
 				case:
 					break
 				}

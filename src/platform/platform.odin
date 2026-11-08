@@ -509,13 +509,20 @@ draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 	gl.DrawArrays(gl.LINE_LOOP, 0, i32(renderer.vertices_count))
 }
 
-draw_line :: proc(x1, x2, y1, y2: f64, color: engine.Color) {
+draw_line :: proc(x1, y1, x2, y2: f64, color: engine.Color) {
 
 	gl_color := engine_color_to_gl_color(color)
 	t_x, t_y, t_s := camera_translation_position(x1, y1, 1)
 
-	w, h := get_window_size()
+	x, y := f32((x2 - x1)), f32((y2 - y1))
+	radius := math.sqrt(x * x + y * y)
+	angle := math.atan(y / x)
+	unit_x, unit_y := math.cos(angle), math.sin(angle)
 
+	sign_x := 1 if x > 0 else -1
+	sign_y := 1 if y > 0 else -1
+
+	// set center (x1, y1)
 	renderer_push_vertex(
 		renderer,
 		{0, 0, 0, 1},
@@ -524,7 +531,7 @@ draw_line :: proc(x1, x2, y1, y2: f64, color: engine.Color) {
 	)
 	renderer_push_vertex(
 		renderer,
-		{f32((x2 - x1)) / f32(w), f32((y1 - y2)) / f32(h), 0, 1},
+		{f32(unit_x) * f32(sign_x), f32(-unit_y) * f32(sign_y), 0, 1},
 		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
 		{0, 0},
 	)
@@ -544,8 +551,8 @@ draw_line :: proc(x1, x2, y1, y2: f64, color: engine.Color) {
 		renderer^,
 		t_x,
 		t_y,
-		math.abs(x1 - x2),
-		math.abs(y1 - y2),
+		f64(radius),
+		f64(radius),
 		t_s,
 	)
 	gl.ProgramUniformMatrix4fv(

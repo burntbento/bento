@@ -16,7 +16,7 @@ RenderCommandClearScreen :: struct {
 }
 
 RenderCommandDrawLine :: struct {
-	x1, x2, y1, y2: f64,
+	x1, y1, x2, y2: f64,
 	color:          engine.Color,
 }
 
@@ -244,6 +244,6 @@ cmd_end_clipping_rect :: proc(cmdbuf: ^RenderCommandBuffer) {
 }
 
 // draw line
-cmd_draw_line :: proc(cmdbuf: ^RenderCommandBuffer, x1, x2, y1, y2: f64, color: engine.Color) {
-	cmd_push(cmdbuf, RenderCommandDrawLine{x1, x2, y1, y2, color})
+cmd_draw_line :: proc(cmdbuf: ^RenderCommandBuffer, x1, y1, x2, y2: f64, color: engine.Color) {
+	cmd_push(cmdbuf, RenderCommandDrawLine{x1, y1, x2, y2, color})
 }
