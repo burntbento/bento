@@ -524,7 +524,7 @@ draw_line :: proc(x1, x2, y1, y2: f64, color: engine.Color) {
 	)
 	renderer_push_vertex(
 		renderer,
-		{f32((x2 - x1)) / f32(w), f32((y2 - y1)) / f32(h), 0, 1},
+		{f32((x2 - x1)) / f32(w), f32((y1 - y2)) / f32(h), 0, 1},
 		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
 		{0, 0},
 	)

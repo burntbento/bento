@@ -73,7 +73,9 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	// draw red rectangle in the center of the screen
 	x1 := rect_width
 	y1 := rect_width
-	engine.cmd_draw_line(state.cmdbuf, x1, x1 + 100, y1, y1 + 100, engine.RED)
+
+	engine.cmd_draw_rect(state.cmdbuf, engine.rect(x1, y1, rect_width, rect_width), engine.RED)
+	engine.cmd_draw_line(state.cmdbuf, x1, x1 + rect_width, y1, y1 + rect_width, engine.GREEN)
 	return state.cmdbuf
 }
 
