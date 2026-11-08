@@ -2,7 +2,7 @@ package engine
 
 import "bento:engine"
 // render comand buffer structure
-MAXCOMMANDS :: 1024
+MAXCOMMANDS :: 2048
 
 // render command types
 RenderCommandPushCanvas :: struct {
