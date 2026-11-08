@@ -84,8 +84,8 @@ main :: proc() {
 	// main proc, set game function pointers
 	platform_config := engine.PlatformConfig {
 		title         = "raycast",
-		window_width  = 640,
-		window_height = 480,
+		window_width  = 800,
+		window_height = 600,
 		fullscreen    = false,
 		scale_mode    = .NEAREST,
 		logging_level = .VERBOSE,
@@ -291,7 +291,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	engine.cmd_draw_debug_text(
 		state.cmdbuf,
 		engine.vector2(10, 10),
-		"move with up/down, rotate with left/right",
+		"move with w/s, rotate with a/d",
 		2,
 		engine.WHITE,
 	)
