@@ -1,5 +1,6 @@
 package engine
 
+import "bento:engine"
 // render comand buffer structure
 MAXCOMMANDS :: 1024
 
@@ -12,6 +13,11 @@ RenderCommandPopCanvas :: struct {}
 
 RenderCommandClearScreen :: struct {
 	color: Color,
+}
+
+RenderCommandDrawLine :: struct {
+	x1, x2, y1, y2: f64,
+	color:          engine.Color,
 }
 
 RenderCommandDrawCircle :: struct {
@@ -88,6 +94,7 @@ RenderCommand :: union {
 	RenderCommandSetClippingRect,
 	RenderCommandEndClippingRect,
 	RenderCommandDrawArc,
+	RenderCommandDrawLine,
 }
 
 // buffer to be read and written to
@@ -234,4 +241,9 @@ cmd_set_clipping_rect :: proc(cmdbuf: ^RenderCommandBuffer, rect: Rect) {
 
 cmd_end_clipping_rect :: proc(cmdbuf: ^RenderCommandBuffer) {
 	cmd_push(cmdbuf, RenderCommandEndClippingRect{})
+}
+
+// draw line
+cmd_draw_line :: proc(cmdbuf: ^RenderCommandBuffer, x1, x2, y1, y2: f64, color: engine.Color) {
+	cmd_push(cmdbuf, RenderCommandDrawLine{x1, x2, y1, y2, color})
 }
