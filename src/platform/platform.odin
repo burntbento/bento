@@ -509,6 +509,76 @@ draw_rect_line :: proc(rect: engine.Rect, color: engine.Color) {
 	gl.DrawArrays(gl.LINE_LOOP, 0, i32(renderer.vertices_count))
 }
 
+draw_line :: proc(x1, y1, x2, y2: f64, color: engine.Color) {
+
+	gl_color := engine_color_to_gl_color(color)
+	t_x, t_y, t_s := camera_translation_position(x1, y1, 1)
+
+	x, y := f32((x2 - x1)), f32((y2 - y1))
+	radius := math.sqrt(x * x + y * y)
+	angle := math.atan(y / x)
+	unit_x, unit_y := math.cos(angle), math.sin(angle)
+
+	sign_x := 1 if x > 0 else -1
+	sign_y := 1 if y > 0 else -1
+
+	// set center (x1, y1)
+	renderer_push_vertex(
+		renderer,
+		{0, 0, 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	renderer_push_vertex(
+		renderer,
+		{f32(unit_x) * f32(sign_x), f32(-unit_y) * f32(sign_y), 0, 1},
+		{gl_color.r, gl_color.g, gl_color.b, gl_color.a},
+		{0, 0},
+	)
+	defer renderer_clear_vertices(renderer)
+
+	projection_location := gl.GetUniformLocation(
+		renderer.shader_program.vertex_shader_program,
+		"vProjection",
+	)
+	if projection_location < 0 {
+		logger(.ERROR, "Failed to find location")
+		return
+	}
+	gl.BindTextureUnit(0, placeholder_texture.target)
+
+	transformation := renderer_get_transformation_matrix(
+		renderer^,
+		t_x,
+		t_y,
+		f64(radius),
+		f64(radius),
+		t_s,
+	)
+	gl.ProgramUniformMatrix4fv(
+		renderer.shader_program.vertex_shader_program,
+		projection_location,
+		1,
+		gl.FALSE,
+		&transformation[0][0],
+	)
+
+	gl.BindVertexArray(renderer.vao)
+	gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo)
+	gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		0,
+		renderer.vertices_count * size_of(RendererVertex),
+		&renderer.vertices_data,
+	)
+
+	// set to line mode then reset back to fill
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	defer gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
+
+	gl.DrawArrays(gl.LINE_LOOP, 0, i32(renderer.vertices_count))
+}
+
 draw_arc :: proc(
 	center: engine.Vector2,
 	radius, start_angle, end_angle, thickness: f32,
