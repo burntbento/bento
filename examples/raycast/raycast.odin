@@ -1,5 +1,4 @@
 /*
-
 	 Example From: https://lodev.org/cgtutor/raycasting.html
 
 	 Original License:
@@ -45,7 +44,7 @@ screen_height: int // height of the screen in pixels
 
 MAP_WIDTH :: 24
 MAP_HEIGHT :: 24
-WorldMap := [MAP_HEIGHT][MAP_WIDTH]int {
+WorldMap := [MAP_WIDTH][MAP_HEIGHT]int {
 	{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 	{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
 	{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -72,7 +71,6 @@ WorldMap := [MAP_HEIGHT][MAP_WIDTH]int {
 	{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 }
 
-// player
 position: engine.Vector2
 direction: engine.Vector2
 plane: engine.Vector2
