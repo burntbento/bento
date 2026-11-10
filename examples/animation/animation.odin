@@ -101,7 +101,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 		engine.vector2(0, 0),
 		texture_handle,
 		engine.rect(
-			f64(animation.animations[animation.current].current_frame * texture_w),
+			f64(engine.animation_get_current_frame(animation) * texture_w),
 			0,
 			texture_w,
 			texture_h,
