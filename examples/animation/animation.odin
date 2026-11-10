@@ -67,7 +67,7 @@ init :: proc(platform: ^engine.Platform) {
 
 	// init animation state
 	animation = engine.animation_new(texture_w, texture_h)
-	engine.animation_add(animation, "idle", 0, 0, 13, 0.1, true)
+	engine.animation_add(animation, "idle", 0, 0, 24, 0.1, true)
 	engine.animation_switch(animation, "idle")
 }
 
@@ -83,7 +83,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 
 
 	// flush screen with a blank color
-	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
+	engine.cmd_clear_screen(state.cmdbuf, engine.color(42, 45, 43, 255))
 
 	// postion centering the sprite based on scale
 	scale: f64 = 4
