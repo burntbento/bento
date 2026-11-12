@@ -34,12 +34,6 @@ gl_context: sdl.GLContext
 
 window: ^sdl.Window // sdl window
 
-WindowData :: struct {
-	width:   int,
-	height:  int,
-	density: f32,
-}
-
 renderer: ^Renderer // opengl renderer
 
 platform_config: ^PlatformConfig // config
@@ -194,8 +188,10 @@ init :: proc(config: engine.PlatformConfig) {
 		logger(.ERROR, "SDL failed to sync window: %s", sdl.GetError())
 	}
 
-	window_width, window_height = get_window_size()
-	logger(.DEBUG, "Window Size: %d %d", window_width, window_height)
+	// window
+	window_data = window_data_init(window)
+	logger(.DEBUG, "Window Size: %d %d", window_data.width, window_data.height)
+	logger(.DEBUG, "Window Density: %.2f", window_data.density)
 
 	gl_context = sdl.GL_CreateContext(window)
 	if gl_context == nil {
@@ -228,10 +224,10 @@ init :: proc(config: engine.PlatformConfig) {
 	create_placeholder_texture()
 
 	// create font texture
-	create_font_texture(window_width, window_height)
+	create_font_texture(window_data.width, window_data.height)
 
 	// framebuffer
-	framebuffer = create_framebufferobject(window_width, window_height)
+	framebuffer = create_framebufferobject(window_data.width, window_data.height)
 
 	// storage
 	platform_storage_init()
@@ -992,6 +988,9 @@ shutdown :: proc() {
 	// destory fonts
 	destroy_all_fonts()
 
+	// destroy window
+	window_data_destory(window_data)
+
 	// shutdown audio
 	sdl.CloseAudioDevice(audio_device)
 
@@ -1015,6 +1014,10 @@ shutdown :: proc() {
 
 // get_window_size returns the window size in pixles
 get_window_size :: #force_inline proc() -> (int, int) {
+	return window_data.width, window_data.height
+}
+
+_get_window_size :: #force_inline proc(window: ^sdl.Window) -> (int, int) {
 	w, h: i32
 	if (!sdl.GetWindowSizeInPixels(window, &w, &h)) {
 		logger(.ERROR, "failed to get window size %s", sdl.GetError())
@@ -1643,7 +1646,7 @@ renderer_init :: proc() -> ^Renderer {
 	gl.VertexArrayAttribBinding(r.vao, 2, 0)
 
 	// NOTE: this might bite me
-	r.projection = glsl.mat4Ortho3d(0, f32(window_width), f32(window_height), 0, -1, 1)
+	r.projection = glsl.mat4Ortho3d(0, f32(window_data.width), f32(window_data.height), 0, -1, 1)
 
 	// create shader program
 	vert_src := cstring(&basic_vert_src[0])
@@ -1828,11 +1831,37 @@ present_framebufferobject :: proc(fbo: ^FrameBufferObject) {
 		0,
 		engine.vector2(0, 0),
 		fbo.texture_handle,
-		engine.rect(0, 0, f64(window_width), f64(window_height)),
+		engine.rect(0, 0, f64(window_data.width), f64(window_data.height)),
 		engine.WHITE,
 		false,
 		true,
 		0,
 		0,
 	)
+}
+
+
+// -- Window -- //
+
+window_data: ^WindowData
+
+WindowData :: struct {
+	width:     int,
+	height:    int,
+	density:   f32,
+	allocator: mem.Allocator,
+}
+
+window_data_init :: proc(window: ^sdl.Window, allocator := context.allocator) -> ^WindowData {
+	w := new(WindowData, allocator)
+	w.allocator = allocator
+
+	w.width, w.height = _get_window_size(window)
+	w.density = sdl.GetWindowPixelDensity(window)
+	return w
+}
+
+window_data_destory :: proc(window: ^WindowData) {
+	allocator := window.allocator
+	free(window_data, allocator)
 }
