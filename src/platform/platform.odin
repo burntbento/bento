@@ -106,7 +106,7 @@ platform_config_new :: proc(
 		panic("Failed to load config, cstring clone allocation failed")
 	}
 
-	flags: sdl.WindowFlags = {.HIGH_PIXEL_DENSITY, .OPENGL, .RESIZABLE}
+	flags: sdl.WindowFlags = {.HIGH_PIXEL_DENSITY, .OPENGL}
 	if config.fullscreen {
 		flags += {.FULLSCREEN}
 	}
@@ -1128,7 +1128,7 @@ update_input :: proc(input: ^engine.GameInput) {
 			state: f64 = (evt.type == sdl.EventType.MOUSE_BUTTON_DOWN) ? 1.0 : 0.0
 			input_set_state(input, type, state)
 		} else if (evt.type == sdl.EventType.MOUSE_MOTION) {
-			density := f64(sdl.GetWindowPixelDensity(window)) // NOTE: added this for hpdi windows and mouse position
+			density := f64(window_data.density) // NOTE: added this for hpdi windows and mouse position
 			input.mouse_x = f64(evt.motion.x) * density
 			input.mouse_y = f64(evt.motion.y) * density
 		} else if (evt.type == sdl.EventType.GAMEPAD_ADDED) {
