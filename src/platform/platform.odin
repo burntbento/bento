@@ -106,7 +106,7 @@ platform_config_new :: proc(
 		panic("Failed to load config, cstring clone allocation failed")
 	}
 
-	flags: sdl.WindowFlags = {.HIGH_PIXEL_DENSITY, .OPENGL}
+	flags: sdl.WindowFlags = {.HIGH_PIXEL_DENSITY, .OPENGL, .RESIZABLE}
 	if config.fullscreen {
 		flags += {.FULLSCREEN}
 	}
@@ -1017,6 +1017,8 @@ get_window_size :: #force_inline proc() -> (int, int) {
 	return window_data.width, window_data.height
 }
 
+
+// get_window_size returns the window size in pixles, internal wrapper of sdl
 _get_window_size :: #force_inline proc(window: ^sdl.Window) -> (int, int) {
 	w, h: i32
 	if (!sdl.GetWindowSizeInPixels(window, &w, &h)) {
@@ -1162,7 +1164,12 @@ update_input :: proc(input: ^engine.GameInput) {
 			if text_buffer_len + n <= len(text_buffer) {
 				fmt.bprint(text_buffer[text_buffer_len:], evt.text.text)
 				text_buffer_len += n
-			}}
+			}
+		} else if (evt.type == sdl.EventType.WINDOW_RESIZED) {
+			window_data.width = int(evt.window.data1)
+			window_data.height = int(evt.window.data2)
+			logger(.DEBUG, "Window resize: %d %d", window_data.width, window_data.height)
+		}
 
 	}
 }

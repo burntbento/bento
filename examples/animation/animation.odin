@@ -10,9 +10,6 @@ import "bento:execute"
 // for the life of the game
 state: ^engine.GameState
 
-screen_width: int // width of the screen in pixels
-screen_height: int // height of the screen in pixels
-
 texture_handle: int // handle to the jump.png texture
 animation: ^engine.Animation // holds animation state
 
@@ -56,8 +53,6 @@ init :: proc(platform: ^engine.Platform) {
 		panic(engine.fmt_error(err, context.temp_allocator))
 	}
 
-	// fill in screen_width and height
-	screen_width, screen_height = state.platform.get_window_size()
 
 	// get texture handle
 	texture_handle, err = engine.texture_load("examples/animation/jump.png", state)
@@ -81,6 +76,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	// resetting here makes sure that memory doesnt build up
 	engine.cmd_reset(state.cmdbuf)
 
+	screen_width, screen_height := state.platform.get_window_size()
 
 	// flush screen with a blank color
 	engine.cmd_clear_screen(state.cmdbuf, engine.color(42, 45, 43, 255))
