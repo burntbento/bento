@@ -34,6 +34,12 @@ gl_context: sdl.GLContext
 
 window: ^sdl.Window // sdl window
 
+WindowData :: struct {
+	width:   int,
+	height:  int,
+	density: f32,
+}
+
 renderer: ^Renderer // opengl renderer
 
 platform_config: ^PlatformConfig // config
@@ -43,8 +49,6 @@ platform_storage: ^PlatformStorage // sdl platform_storage interface
 audio_device: sdl.AudioDeviceID // sdl audio device
 render_cam: ^engine.Camera2D // sdl renderer
 framebuffer: ^FrameBufferObject // frame buffer to swap
-window_width, window_height: int // window width and height, it should adjust on resize
-
 
 text_buffer: [64]u8 // text buffer for text input not key input
 text_buffer_len: int // text buffer length
