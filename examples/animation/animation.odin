@@ -88,8 +88,8 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	// postion centering the sprite based on scale
 	scale: f64 = 4
 	pos := engine.vector2(
-		f64(800) / 2 - 0.5 * texture_w * scale,
-		f64(600) / 2 - 0.5 * texture_h * scale,
+		f64(screen_width) / 2 - 0.5 * texture_w * scale,
+		f64(screen_height) / 2 - 0.5 * texture_h * scale,
 	)
 
 	// draw red rectangle in the center of the screen
