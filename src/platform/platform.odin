@@ -1822,12 +1822,17 @@ destroy_shader_program :: proc(shader_program: ^ShaderProgramPipeline) {
 FrameBufferObject :: struct {
 	buffer:         u32,
 	texture_handle: int,
+	allocator:      mem.Allocator,
 }
 
-create_framebufferobject :: proc(width, height: int) -> ^FrameBufferObject {
+create_framebufferobject :: proc(
+	width, height: int,
+	allocator := context.allocator,
+) -> ^FrameBufferObject {
 
 	// create struct
-	fbo := new(FrameBufferObject)
+	fbo := new(FrameBufferObject, allocator)
+	fbo.allocator = allocator
 
 	fbo.texture_handle = create_texture(width, height, 4, 0, nil)
 	texture_data := get_texture(fbo.texture_handle)
@@ -1840,8 +1845,9 @@ create_framebufferobject :: proc(width, height: int) -> ^FrameBufferObject {
 }
 
 destroy_framebufferobject :: proc(fbo: ^FrameBufferObject) {
+	allocator := fbo.allocator
 	gl.DeleteFramebuffers(1, &fbo.buffer)
-	free(fbo)
+	free(fbo, allocator)
 }
 
 attach_framebufferobject :: proc(fbo: ^FrameBufferObject) {
