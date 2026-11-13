@@ -192,10 +192,10 @@ init :: proc(config: engine.PlatformConfig) {
 		logger(.ERROR, "SDL failed to sync window: %s", sdl.GetError())
 	}
 
-	window_width, window_height = get_window_size_pixels()
+	window_width, window_height = _get_window_size_pixels()
 	logger(.DEBUG, "Window Size (Pixels): %d %d", window_width, window_height)
 
-	screen_width, screen_height = get_window_size()
+	screen_width, screen_height = _get_window_size()
 	logger(.DEBUG, "Screen Size: %d %d", screen_width, screen_height)
 
 	window_density = _get_window_density(window)
@@ -1017,7 +1017,13 @@ shutdown :: proc() {
 	sdl.Quit()
 }
 
+
 get_window_size :: #force_inline proc() -> (int, int) {
+	return screen_width, screen_height
+}
+
+@(private)
+_get_window_size :: #force_inline proc() -> (int, int) {
 	w, h: i32
 	if (!sdl.GetWindowSize(window, &w, &h)) {
 		logger(.ERROR, "failed to get window size %s", sdl.GetError())
@@ -1027,6 +1033,11 @@ get_window_size :: #force_inline proc() -> (int, int) {
 }
 
 get_window_size_pixels :: #force_inline proc() -> (int, int) {
+	return window_width, window_height
+}
+
+@(private)
+_get_window_size_pixels :: #force_inline proc() -> (int, int) {
 	w, h: i32
 	if (!sdl.GetWindowSizeInPixels(window, &w, &h)) {
 		logger(.ERROR, "failed to get window size %s", sdl.GetError())
