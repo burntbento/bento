@@ -1018,6 +1018,9 @@ shutdown :: proc() {
 }
 
 
+// returns the size of the window client area, this may differ from
+// get_window_size_pixels on high dpi displays which gets the real client area
+// they can be standardised with get_window_density
 get_window_size :: #force_inline proc() -> (int, int) {
 	return screen_width, screen_height
 }
