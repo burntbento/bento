@@ -196,7 +196,7 @@ init :: proc(config: engine.PlatformConfig) {
 	logger(.DEBUG, "Window Size (Pixels): %d %d", window_width, window_height)
 
 	screen_width, screen_height = get_window_size()
-	logger(.DEBUG, "Screen Size: %d %d", window_width, window_height)
+	logger(.DEBUG, "Screen Size: %d %d", screen_width, screen_height)
 
 	window_density = _get_window_density(window)
 	logger(.DEBUG, "Window Density: %.2f", window_density)
@@ -1663,7 +1663,7 @@ renderer_init :: proc() -> ^Renderer {
 	gl.VertexArrayAttribBinding(r.vao, 2, 0)
 
 	// NOTE: this might bite me
-	r.projection = glsl.mat4Ortho3d(0, f32(window_width), f32(window_height), 0, -1, 1)
+	renderer_set_projection(r, f64(window_width), f64(window_height))
 
 	// create shader program
 	vert_src := cstring(&basic_vert_src[0])
@@ -1702,6 +1702,10 @@ renderer_init :: proc() -> ^Renderer {
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
 	return r
+}
+
+renderer_set_projection :: proc(r: ^Renderer, width: f64, height: f64) {
+	r.projection = glsl.mat4Ortho3d(0, f32(width), f32(height), 0, -1, 1)
 }
 
 renderer_push_vertex :: proc(r: ^Renderer, position: glsl.vec4, color: glsl.vec4, uv: glsl.vec2) {
@@ -1844,11 +1848,11 @@ detach_framebufferobject :: proc() {
 present_framebufferobject :: proc(fbo: ^FrameBufferObject) {
 	draw_sprite(
 		engine.vector2(0, 0),
-		1 * f64(window_density),
+		1,
 		0,
 		engine.vector2(0, 0),
 		fbo.texture_handle,
-		engine.rect(0, 0, f64(window_width), f64(window_height)),
+		engine.rect(0, 0, f64(screen_width), f64(screen_height)),
 		engine.WHITE,
 		false,
 		true,
