@@ -33,6 +33,9 @@ MINOR :: 6
 gl_context: sdl.GLContext
 
 window: ^sdl.Window // sdl window
+window_width, window_height: int // window width and height, it should adjust on resize
+screen_width, screen_height: int // the screen width and height, this will differ on a hdpi display
+window_density: f32
 
 renderer: ^Renderer // opengl renderer
 
@@ -43,7 +46,6 @@ platform_storage: ^PlatformStorage // sdl platform_storage interface
 audio_device: sdl.AudioDeviceID // sdl audio device
 render_cam: ^engine.Camera2D // sdl renderer
 framebuffer: ^FrameBufferObject // frame buffer to swap
-window_width, window_height: int // window width and height, it should adjust on resize
 
 
 text_buffer: [64]u8 // text buffer for text input not key input
@@ -190,8 +192,14 @@ init :: proc(config: engine.PlatformConfig) {
 		logger(.ERROR, "SDL failed to sync window: %s", sdl.GetError())
 	}
 
-	window_width, window_height = get_window_size()
-	logger(.DEBUG, "Window Size: %d %d", window_width, window_height)
+	window_width, window_height = get_window_size_pixels()
+	logger(.DEBUG, "Window Size (Pixels): %d %d", window_width, window_height)
+
+	screen_width, screen_height = get_window_size()
+	logger(.DEBUG, "Screen Size: %d %d", window_width, window_height)
+
+	window_density = _get_window_density(window)
+	logger(.DEBUG, "Window Density: %.2f", window_density)
 
 	gl_context = sdl.GL_CreateContext(window)
 	if gl_context == nil {
@@ -227,7 +235,7 @@ init :: proc(config: engine.PlatformConfig) {
 	create_font_texture(window_width, window_height)
 
 	// framebuffer
-	framebuffer = create_framebufferobject(window_width, window_height)
+	framebuffer = create_framebufferobject(screen_width, screen_height)
 
 	// storage
 	platform_storage_init()
@@ -1009,14 +1017,31 @@ shutdown :: proc() {
 	sdl.Quit()
 }
 
-// get_window_size returns the window size in pixles
 get_window_size :: #force_inline proc() -> (int, int) {
+	w, h: i32
+	if (!sdl.GetWindowSize(window, &w, &h)) {
+		logger(.ERROR, "failed to get window size %s", sdl.GetError())
+		return 0, 0
+	}
+	return int(w), int(h)
+}
+
+get_window_size_pixels :: #force_inline proc() -> (int, int) {
 	w, h: i32
 	if (!sdl.GetWindowSizeInPixels(window, &w, &h)) {
 		logger(.ERROR, "failed to get window size %s", sdl.GetError())
 		return 0, 0
 	}
 	return int(w), int(h)
+}
+
+get_window_density :: proc() -> f32 {
+	return window_density
+}
+
+@(private)
+_get_window_density :: #force_inline proc(window: ^sdl.Window) -> f32 {
+	return sdl.GetWindowPixelDensity(window)
 }
 
 // get_render_size returns the pixels size of the renderer context
@@ -1156,7 +1181,6 @@ update_input :: proc(input: ^engine.GameInput) {
 				fmt.bprint(text_buffer[text_buffer_len:], evt.text.text)
 				text_buffer_len += n
 			}}
-
 	}
 }
 
@@ -1820,7 +1844,7 @@ detach_framebufferobject :: proc() {
 present_framebufferobject :: proc(fbo: ^FrameBufferObject) {
 	draw_sprite(
 		engine.vector2(0, 0),
-		1,
+		1 * f64(window_density),
 		0,
 		engine.vector2(0, 0),
 		fbo.texture_handle,
