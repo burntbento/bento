@@ -235,7 +235,7 @@ init :: proc(config: engine.PlatformConfig) {
 	create_font_texture(window_width, window_height)
 
 	// framebuffer
-	framebuffer = create_framebufferobject(screen_width, screen_height)
+	framebuffer = create_framebufferobject(window_width, window_height)
 
 	// storage
 	platform_storage_init()
@@ -1848,11 +1848,11 @@ detach_framebufferobject :: proc() {
 present_framebufferobject :: proc(fbo: ^FrameBufferObject) {
 	draw_sprite(
 		engine.vector2(0, 0),
-		1,
+		f64(window_density), // scale by window density
 		0,
 		engine.vector2(0, 0),
 		fbo.texture_handle,
-		engine.rect(0, 0, f64(screen_width), f64(screen_height)),
+		engine.rect(0, 0, f64(window_width), f64(window_height)),
 		engine.WHITE,
 		false,
 		true,
