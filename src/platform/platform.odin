@@ -1058,11 +1058,6 @@ _get_window_density :: #force_inline proc(window: ^sdl.Window) -> f32 {
 	return sdl.GetWindowPixelDensity(window)
 }
 
-// get_render_size returns the pixels size of the renderer context
-// note: should be the same as sdl.GetWindowSizeInPixels
-get_render_size :: proc() -> (int, int) {
-	return get_window_size()
-}
 
 // input
 sdl_mouse_mapping :: [?]int {
