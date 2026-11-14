@@ -72,6 +72,11 @@ statemachine_destroy :: proc(statemachine: ^StateMachine) {
 
 
 statemachine_switch_state :: proc(statemachine: ^StateMachine, next_state: string) {
+	if statemachine.current == "" {
+		statemachine.current = next_state
+		return
+	}
+
 	if _, ok := statemachine.states[next_state]; ok {
 		statemachine.next = next_state
 	}
