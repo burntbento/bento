@@ -33,6 +33,9 @@ MINOR :: 6
 gl_context: sdl.GLContext
 
 window: ^sdl.Window // sdl window
+window_width, window_height: int // window width and height, it should adjust on resize
+screen_width, screen_height: int // the screen width and height, this will differ on a hdpi display
+window_density: f32
 
 renderer: ^Renderer // opengl renderer
 
@@ -43,7 +46,6 @@ platform_storage: ^PlatformStorage // sdl platform_storage interface
 audio_device: sdl.AudioDeviceID // sdl audio device
 render_cam: ^engine.Camera2D // sdl renderer
 framebuffer: ^FrameBufferObject // frame buffer to swap
-window_width, window_height: int // window width and height, it should adjust on resize
 
 
 text_buffer: [64]u8 // text buffer for text input not key input
@@ -190,8 +192,14 @@ init :: proc(config: engine.PlatformConfig) {
 		logger(.ERROR, "SDL failed to sync window: %s", sdl.GetError())
 	}
 
-	window_width, window_height = get_window_size()
-	logger(.DEBUG, "Window Size: %d %d", window_width, window_height)
+	window_width, window_height = _get_window_size_pixels()
+	logger(.DEBUG, "Window Size (Pixels): %d %d", window_width, window_height)
+
+	screen_width, screen_height = _get_window_size()
+	logger(.DEBUG, "Screen Size: %d %d", screen_width, screen_height)
+
+	window_density = _get_window_density(window)
+	logger(.DEBUG, "Window Density: %.2f", window_density)
 
 	gl_context = sdl.GL_CreateContext(window)
 	if gl_context == nil {
@@ -1009,8 +1017,30 @@ shutdown :: proc() {
 	sdl.Quit()
 }
 
-// get_window_size returns the window size in pixles
+
+// returns the size of the window client area, this may differ from
+// get_window_size_pixels on high dpi displays which gets the real client area
+// they can be standardised with get_window_density
 get_window_size :: #force_inline proc() -> (int, int) {
+	return screen_width, screen_height
+}
+
+@(private)
+_get_window_size :: #force_inline proc() -> (int, int) {
+	w, h: i32
+	if (!sdl.GetWindowSize(window, &w, &h)) {
+		logger(.ERROR, "failed to get window size %s", sdl.GetError())
+		return 0, 0
+	}
+	return int(w), int(h)
+}
+
+get_window_size_pixels :: #force_inline proc() -> (int, int) {
+	return window_width, window_height
+}
+
+@(private)
+_get_window_size_pixels :: #force_inline proc() -> (int, int) {
 	w, h: i32
 	if (!sdl.GetWindowSizeInPixels(window, &w, &h)) {
 		logger(.ERROR, "failed to get window size %s", sdl.GetError())
@@ -1019,11 +1049,15 @@ get_window_size :: #force_inline proc() -> (int, int) {
 	return int(w), int(h)
 }
 
-// get_render_size returns the pixels size of the renderer context
-// note: should be the same as sdl.GetWindowSizeInPixels
-get_render_size :: proc() -> (int, int) {
-	return get_window_size()
+get_window_density :: proc() -> f32 {
+	return window_density
 }
+
+@(private)
+_get_window_density :: #force_inline proc(window: ^sdl.Window) -> f32 {
+	return sdl.GetWindowPixelDensity(window)
+}
+
 
 // input
 sdl_mouse_mapping :: [?]int {
@@ -1156,7 +1190,6 @@ update_input :: proc(input: ^engine.GameInput) {
 				fmt.bprint(text_buffer[text_buffer_len:], evt.text.text)
 				text_buffer_len += n
 			}}
-
 	}
 }
 
@@ -1639,7 +1672,7 @@ renderer_init :: proc() -> ^Renderer {
 	gl.VertexArrayAttribBinding(r.vao, 2, 0)
 
 	// NOTE: this might bite me
-	r.projection = glsl.mat4Ortho3d(0, f32(window_width), f32(window_height), 0, -1, 1)
+	renderer_set_projection(r, f64(window_width), f64(window_height))
 
 	// create shader program
 	vert_src := cstring(&basic_vert_src[0])
@@ -1678,6 +1711,10 @@ renderer_init :: proc() -> ^Renderer {
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
 	return r
+}
+
+renderer_set_projection :: proc(r: ^Renderer, width: f64, height: f64) {
+	r.projection = glsl.mat4Ortho3d(0, f32(width), f32(height), 0, -1, 1)
 }
 
 renderer_push_vertex :: proc(r: ^Renderer, position: glsl.vec4, color: glsl.vec4, uv: glsl.vec2) {
@@ -1785,12 +1822,17 @@ destroy_shader_program :: proc(shader_program: ^ShaderProgramPipeline) {
 FrameBufferObject :: struct {
 	buffer:         u32,
 	texture_handle: int,
+	allocator:      mem.Allocator,
 }
 
-create_framebufferobject :: proc(width, height: int) -> ^FrameBufferObject {
+create_framebufferobject :: proc(
+	width, height: int,
+	allocator := context.allocator,
+) -> ^FrameBufferObject {
 
 	// create struct
-	fbo := new(FrameBufferObject)
+	fbo := new(FrameBufferObject, allocator)
+	fbo.allocator = allocator
 
 	fbo.texture_handle = create_texture(width, height, 4, 0, nil)
 	texture_data := get_texture(fbo.texture_handle)
@@ -1803,8 +1845,9 @@ create_framebufferobject :: proc(width, height: int) -> ^FrameBufferObject {
 }
 
 destroy_framebufferobject :: proc(fbo: ^FrameBufferObject) {
+	allocator := fbo.allocator
 	gl.DeleteFramebuffers(1, &fbo.buffer)
-	free(fbo)
+	free(fbo, allocator)
 }
 
 attach_framebufferobject :: proc(fbo: ^FrameBufferObject) {
@@ -1820,7 +1863,7 @@ detach_framebufferobject :: proc() {
 present_framebufferobject :: proc(fbo: ^FrameBufferObject) {
 	draw_sprite(
 		engine.vector2(0, 0),
-		1,
+		f64(window_density), // scale by window density
 		0,
 		engine.vector2(0, 0),
 		fbo.texture_handle,
