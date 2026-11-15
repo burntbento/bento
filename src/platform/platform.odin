@@ -1754,7 +1754,11 @@ renderer_get_transformation_matrix :: proc(
 
 	// translate first to origin
 	translate_1 := glsl.mat4Translate(
-		{f32(x + (width * scale / 2)), f32(y + (height * scale / 2)), 0},
+		{
+			math.round_f32(f32(x + (width * scale / 2))),
+			math.round_f32(f32(y + (height * scale / 2))),
+			0,
+		},
 	)
 	// rotate around origin
 	rotation := glsl.mat4Rotate({0, 0, 1}, math.to_radians(rotation))
