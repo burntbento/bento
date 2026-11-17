@@ -2,7 +2,22 @@ package engine
 
 import "core:strings"
 
-texture_load :: proc(path: cstring, state: ^GameState) -> (handle: int, error: Error) {
+texture_load :: proc {
+	texture_load_cstring,
+	texture_load_string,
+}
+
+texture_load_string :: proc(path: string, state: ^GameState) -> (handle: int, error: Error) {
+	cstr, err := strings.clone_to_cstring(path, context.temp_allocator)
+	if err != nil {
+		state.platform.logger(.ERROR, "Failed to convert string to cstring")
+		return -1, error.(RUNTIME_ERROR)
+	}
+
+	return texture_load_cstring(cstr, state)
+}
+
+texture_load_cstring :: proc(path: cstring, state: ^GameState) -> (handle: int, error: Error) {
 	assert(len(path) > 0)
 
 	key := string(path)
