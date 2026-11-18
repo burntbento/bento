@@ -89,7 +89,7 @@ init :: proc(platform: ^engine.Platform) {
 
 
 	// get texture handle
-	texture_handle, err = engine.texture_load("examples/gamepad/gamepad.png", state)
+	texture_handle, err = engine.load_texture("examples/gamepad/gamepad.png", state)
 	if err != nil {
 		panic("failed to load gamepad.png")
 	}
