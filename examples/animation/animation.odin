@@ -60,7 +60,7 @@ init :: proc(platform: ^engine.Platform) {
 	screen_width, screen_height = state.platform.get_window_size()
 
 	// get texture handle
-	texture_handle, err = engine.texture_load("examples/animation/cauldron.png", state)
+	texture_handle, err = engine.load_texture("examples/animation/cauldron.png", state)
 	if err != nil {
 		panic("failed to load retro_cats")
 	}

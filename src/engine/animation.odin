@@ -83,6 +83,7 @@ animation_update :: proc(anim: ^Animation, dt: f64) {
 }
 
 animation_destroy :: proc(anim: ^Animation) {
+	if anim == nil do return
 	allocator := anim.allocator
 	delete(anim.animations)
 	free(anim, allocator)

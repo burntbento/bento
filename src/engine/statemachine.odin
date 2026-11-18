@@ -65,6 +65,7 @@ statemachine_update :: proc(statemachine: ^StateMachine, ctx: rawptr, input: ^Ga
 
 
 statemachine_destroy :: proc(statemachine: ^StateMachine) {
+	if statemachine == nil do return
 	allocator := statemachine.allocator
 	delete(statemachine.states)
 	free(statemachine, allocator)
