@@ -45,7 +45,7 @@ gamepad: ^sdl.Gamepad // for gamepad
 platform_storage: ^PlatformStorage // sdl platform_storage interface
 audio_device: sdl.AudioDeviceID // sdl audio device
 render_cam: ^engine.Camera2D // sdl renderer
-framebuffer: ^FrameBufferObject // frame buffer to swap
+default_canvas: int // frame buffer to swap
 
 
 text_buffer: [64]u8 // text buffer for text input not key input
@@ -235,7 +235,7 @@ init :: proc(config: engine.PlatformConfig) {
 	create_font_texture(window_width, window_height)
 
 	// framebuffer
-	framebuffer = create_framebufferobject(window_width, window_height)
+	default_canvas = create_canvas(window_width, window_height)
 
 	// storage
 	platform_storage_init()
@@ -259,7 +259,7 @@ init :: proc(config: engine.PlatformConfig) {
 }
 
 begin_frame :: proc() {
-	attach_framebufferobject(framebuffer)
+	set_canvas(default_canvas)
 }
 
 end_frame :: proc() {
@@ -269,7 +269,7 @@ end_frame :: proc() {
 	clear_screen(engine.WHITE)
 
 	// present frame buffer
-	present_framebufferobject(framebuffer)
+	present_canvas(default_canvas)
 
 	if !sdl.GL_SwapWindow(window) {
 		logger(.ERROR, "Failed to swap buffers")
@@ -991,7 +991,7 @@ shutdown :: proc() {
 	destroy_all_textures()
 
 	// destroy framebuffer
-	destroy_framebufferobject(framebuffer)
+	destroy_all_canvas()
 
 	// destory fonts
 	destroy_all_fonts()
@@ -1878,4 +1878,44 @@ present_framebufferobject :: proc(fbo: ^FrameBufferObject) {
 		0,
 		0,
 	)
+}
+
+// -- Canvas -- //
+
+MAX_FRAMEBUFFERS :: 16
+framebuffer_objects: [MAX_FRAMEBUFFERS]^FrameBufferObject
+framebuffer_count: int
+
+
+create_canvas :: proc(width: int, height: int) -> int {
+	canvas := create_framebufferobject(width, height)
+	framebuffer_objects[framebuffer_count] = canvas
+	framebuffer_count += 1
+	return framebuffer_count - 1
+}
+
+@(private)
+get_canvas :: proc(canvas_handle: int) -> ^FrameBufferObject {
+	return framebuffer_objects[canvas_handle]
+}
+
+get_canvas_texture_handle :: proc(canvas_handle: int) -> int {
+	canvas := get_canvas(canvas_handle)
+	return canvas.texture_handle
+}
+
+set_canvas :: proc(canvas_handle: int) {
+	canvas := get_canvas(canvas_handle)
+	attach_framebufferobject(canvas)
+}
+
+present_canvas :: proc(canvas_handle: int) {
+	canvas := get_canvas(canvas_handle)
+	present_framebufferobject(canvas)
+}
+
+destroy_all_canvas :: proc() {
+	for i in 0 ..< framebuffer_count {
+		destroy_framebufferobject(framebuffer_objects[i])
+	}
 }
