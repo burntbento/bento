@@ -108,9 +108,13 @@ animation_switch :: proc(anim: ^Animation, new_animation: string) -> bool {
 	return true
 }
 
-animation_get_current_frame_dimensions :: proc(anim: ^Animation) -> (int, int) {
-	return anim.animations[anim.current].current_frame * anim.width,
-		anim.height * anim.animations[anim.current].row
+animation_get_current_frame_dimensions :: proc(anim: ^Animation) -> Rect {
+	return rect(
+		f64(anim.animations[anim.current].current_frame * anim.width),
+		f64(anim.height * anim.animations[anim.current].row),
+		f64(anim.width),
+		f64(anim.height),
+	)
 }
 
 animation_get_current_frame :: #force_inline proc(anim: ^Animation) -> int {

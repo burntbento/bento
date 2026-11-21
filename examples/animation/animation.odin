@@ -92,6 +92,8 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 		f64(screen_height) / 2 - 0.5 * texture_h * scale,
 	)
 
+	current_frame := engine.animation_get_current_frame_dimensions(animation)
+
 	// draw red rectangle in the center of the screen
 	engine.cmd_draw_sprite(
 		state.cmdbuf,
@@ -100,12 +102,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 		0,
 		engine.vector2(0, 0),
 		texture_handle,
-		engine.rect(
-			f64(engine.animation_get_current_frame(animation) * texture_w),
-			0,
-			texture_w,
-			texture_h,
-		),
+		current_frame,
 		engine.WHITE,
 		false,
 		false,
