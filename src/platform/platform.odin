@@ -993,6 +993,9 @@ shutdown :: proc() {
 	// destroy framebuffer
 	destroy_framebufferobject(framebuffer)
 
+	// destroy shaders
+	destroy_all_shaders()
+
 	// destory fonts
 	destroy_all_fonts()
 
@@ -1600,6 +1603,13 @@ ShaderProgramPipeline :: struct {
 	fragment_shader_program: u32,
 }
 
+MAX_SHADERS :: 16
+shaders: [MAX_SHADERS]u32
+shader_count: int
+
+default_fragment_shader: int
+default_vertex_shader: int
+
 Renderer :: struct {
 	vao:            u32,
 	vbo:            u32,
@@ -1674,36 +1684,24 @@ renderer_init :: proc() -> ^Renderer {
 	// NOTE: this might bite me
 	renderer_set_projection(r, f64(window_width), f64(window_height))
 
-	// create shader program
-	vert_src := cstring(&basic_vert_src[0])
-	frag_src := cstring(&basic_frag_src[0])
-
-	ok: bool
-	r.shader_program.vertex_shader_program, ok = create_shader_program(gl.VERTEX_SHADER, &vert_src)
-	if !ok {
+	default_vertex_shader = create_shader_program(.VERTEX, basic_vert_src)
+	if default_vertex_shader == -1 {
 		panic("Failed to create basic vertex shader")
 	}
 
-	r.shader_program.fragment_shader_program, ok = create_shader_program(
-		gl.FRAGMENT_SHADER,
-		&frag_src,
-	)
-	if !ok {
+	default_fragment_shader = create_shader_program(.FRAGMENT, basic_frag_src)
+	if default_fragment_shader == -1 {
 		panic("Failed to create basic fragment shader")
 	}
 
+	r.shader_program.vertex_shader_program = get_shader_program(default_vertex_shader)
+
+	r.shader_program.fragment_shader_program = get_shader_program(default_fragment_shader)
+
 	gl.CreateProgramPipelines(1, &r.shader_program.pipeline)
 
-	gl.UseProgramStages(
-		r.shader_program.pipeline,
-		gl.VERTEX_SHADER_BIT,
-		r.shader_program.vertex_shader_program,
-	)
-	gl.UseProgramStages(
-		r.shader_program.pipeline,
-		gl.FRAGMENT_SHADER_BIT,
-		r.shader_program.fragment_shader_program,
-	)
+	_set_shader_program(r, .VERTEX, default_vertex_shader)
+	_set_shader_program(r, .FRAGMENT, default_fragment_shader)
 
 	gl.BindProgramPipeline(r.shader_program.pipeline)
 
@@ -1786,7 +1784,7 @@ renderer_clear_vertices :: proc(r: ^Renderer) {
 }
 
 renderer_destroy :: proc(renderer: ^Renderer) {
-	destroy_shader_program(&renderer.shader_program)
+	destroy_shader_pipeline(&renderer.shader_program)
 	gl.DeleteVertexArrays(1, &renderer.vao)
 	gl.DeleteBuffers(1, &renderer.vbo)
 	free(renderer)
@@ -1794,7 +1792,7 @@ renderer_destroy :: proc(renderer: ^Renderer) {
 
 // -- Shader Program -- //
 
-create_shader_program :: proc(type: u32, shader_source: ^cstring) -> (u32, bool) {
+_create_shader_program :: proc(type: u32, shader_source: ^cstring) -> (u32, bool) {
 	shader: u32
 	shader = gl.CreateShaderProgramv(type, 1, shader_source)
 	gl.ProgramParameteri(shader, gl.PROGRAM_SEPARABLE, i32(gl.TRUE))
@@ -1811,9 +1809,66 @@ create_shader_program :: proc(type: u32, shader_source: ^cstring) -> (u32, bool)
 	return shader, true
 }
 
-destroy_shader_program :: proc(shader_program: ^ShaderProgramPipeline) {
-	gl.DeleteProgram(shader_program.vertex_shader_program)
-	gl.DeleteProgram(shader_program.fragment_shader_program)
+create_shader_program :: proc(type: engine.ShaderType, data: []u8) -> int {
+	gl_shader_type: u32
+	switch type {
+	case .VERTEX:
+		gl_shader_type = gl.VERTEX_SHADER
+	case .FRAGMENT:
+		gl_shader_type = gl.FRAGMENT_SHADER
+	}
+	shader_src := cstring(&data[0])
+	shader, ok := _create_shader_program(gl_shader_type, &shader_src)
+	if !ok {
+		return -1
+	}
+
+	shaders[shader_count] = shader
+	shader_count += 1
+	return shader_count - 1
+}
+
+
+get_shader_program :: proc(shader_handle: int) -> u32 {
+	return shaders[shader_handle]
+}
+
+set_shader_program :: proc(type: engine.ShaderType, shader_handle: int) {
+	_set_shader_program(renderer, type, shader_handle)
+}
+
+_set_shader_program :: proc(renderer: ^Renderer, type: engine.ShaderType, shader_handle: int) {
+	stage: u32
+	shader_program: u32
+
+	if shader_handle == -1 {
+		switch type {
+		case .VERTEX:
+			shader_program = get_shader_program(default_vertex_shader)
+		case .FRAGMENT:
+			shader_program = get_shader_program(default_fragment_shader)
+		}
+	} else {
+		shader_program = get_shader_program(shader_handle)
+	}
+	switch type {
+	case .VERTEX:
+		stage = gl.VERTEX_SHADER_BIT
+		renderer.shader_program.vertex_shader_program = shader_program
+	case .FRAGMENT:
+		stage = gl.FRAGMENT_SHADER_BIT
+		renderer.shader_program.fragment_shader_program = shader_program
+	}
+	gl.UseProgramStages(renderer.shader_program.pipeline, stage, shader_program)
+}
+
+destroy_all_shaders :: proc() {
+	for i in 0 ..< shader_count {
+		gl.DeleteProgram(shaders[i])
+	}
+}
+
+destroy_shader_pipeline :: proc(shader_program: ^ShaderProgramPipeline) {
 	gl.DeleteProgramPipelines(1, &shader_program.pipeline)
 }
 
