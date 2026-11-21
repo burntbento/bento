@@ -1607,8 +1607,8 @@ MAX_SHADERS :: 16
 shaders: [MAX_SHADERS]u32
 shader_count: int
 
-default_fragment_shader: u32
-default_vertex_shader: u32
+default_fragment_shader: int
+default_vertex_shader: int
 
 Renderer :: struct {
 	vao:            u32,
@@ -1684,12 +1684,12 @@ renderer_init :: proc() -> ^Renderer {
 	// NOTE: this might bite me
 	renderer_set_projection(r, f64(window_width), f64(window_height))
 
-	default_vertex_shader := create_shader_program(.VERTEX, basic_vert_src)
+	default_vertex_shader = create_shader_program(.VERTEX, basic_vert_src)
 	if default_vertex_shader == -1 {
 		panic("Failed to create basic vertex shader")
 	}
 
-	default_fragment_shader := create_shader_program(.FRAGMENT, basic_frag_src)
+	default_fragment_shader = create_shader_program(.FRAGMENT, basic_frag_src)
 	if default_fragment_shader == -1 {
 		panic("Failed to create basic fragment shader")
 	}
@@ -1839,7 +1839,18 @@ set_shader_program :: proc(type: engine.ShaderType, shader_handle: int) {
 
 _set_shader_program :: proc(renderer: ^Renderer, type: engine.ShaderType, shader_handle: int) {
 	stage: u32
-	shader_program := get_shader_program(shader_handle)
+	shader_program: u32
+
+	if shader_handle == -1 {
+		switch type {
+		case .VERTEX:
+			shader_program = get_shader_program(default_vertex_shader)
+		case .FRAGMENT:
+			shader_program = get_shader_program(default_fragment_shader)
+		}
+	} else {
+		shader_program = get_shader_program(shader_handle)
+	}
 	switch type {
 	case .VERTEX:
 		stage = gl.VERTEX_SHADER_BIT

@@ -56,6 +56,7 @@ engine_run :: proc(game_data: ^Game) {
 		load_sound             = platform.load_sound,
 		play_sound             = platform.play_sound,
 		resume_sound           = platform.resume_sound,
+		create_shader_program  = platform.create_shader_program,
 		pause_sound            = platform.pause_sound,
 		set_sound_volume       = platform.set_sound_volume,
 		is_sound_playing       = platform.is_sound_playing,
@@ -160,6 +161,8 @@ engine_run :: proc(game_data: ^Game) {
 					platform.end_clip_rect()
 				case engine.RenderCommandDrawLine:
 					platform.draw_line(v.x1, v.y1, v.x2, v.y2, v.color)
+				case engine.RenderCommandSetShader:
+					platform.set_shader_program(v.type, v.shader_handle)
 				case:
 					break
 				}

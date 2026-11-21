@@ -5,6 +5,11 @@ import "bento:engine"
 MAXCOMMANDS :: 2048
 
 // render command types
+RenderCommandSetShader :: struct {
+	type:          ShaderType,
+	shader_handle: int,
+}
+
 RenderCommandPushCanvas :: struct {
 	canvas: int,
 }
@@ -95,6 +100,7 @@ RenderCommand :: union {
 	RenderCommandEndClippingRect,
 	RenderCommandDrawArc,
 	RenderCommandDrawLine,
+	RenderCommandSetShader,
 }
 
 // buffer to be read and written to
@@ -246,4 +252,8 @@ cmd_end_clipping_rect :: proc(cmdbuf: ^RenderCommandBuffer) {
 // draw line
 cmd_draw_line :: proc(cmdbuf: ^RenderCommandBuffer, x1, y1, x2, y2: f64, color: engine.Color) {
 	cmd_push(cmdbuf, RenderCommandDrawLine{x1, y1, x2, y2, color})
+}
+
+cmd_set_shader :: proc(cmdbuf: ^RenderCommandBuffer, type: ShaderType, shader_handle: int) {
+	cmd_push(cmdbuf, RenderCommandSetShader{type, shader_handle})
 }

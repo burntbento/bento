@@ -63,6 +63,9 @@ Platform :: struct {
 		out_length: ^u32,
 	) -> bool,
 
+	// shaders
+	create_shader_program:  proc(type: ShaderType, data: []u8) -> int,
+
 	// fonts
 	destroy_all_fonts:      proc(),
 	load_font:              proc(path: string, size: f32) -> int,
