@@ -90,7 +90,7 @@ init :: proc(platform: ^engine.Platform) {
 	frame.texture = ui_texture
 	frame.origin = engine.vector2(0, 0)
 	frame.tile_size = 16
-	frame.scale = 10
+	frame.scale = 4
 }
 
 update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
@@ -107,19 +107,6 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 		backgroundColor = engine.clay_engine_color_to_clay(engine.WHITE),
 	},
 	) {
-
-		if clay.UI(clay.ID("SideBar"))(
-		{
-			layout = {
-				layoutDirection = clay.LayoutDirection.TopToBottom,
-				sizing = {clay.SizingFixed(300), clay.SizingGrow({})},
-				padding = clay.PaddingAll(16),
-				childAlignment = {y = clay.LayoutAlignmentY.Center},
-			},
-			custom = {customData = frame},
-		},
-		) {}
-
 		if clay.UI(clay.ID("canvas"))(
 		{
 			layout = {
@@ -133,7 +120,7 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 		) {}
 
 
-		if clay.UI(clay.ID("SideBar2"))(
+		if clay.UI(clay.ID("SideBar"))(
 		{
 			layout = {
 				layoutDirection = clay.LayoutDirection.TopToBottom,
