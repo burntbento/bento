@@ -5,6 +5,7 @@ import "bento:engine"
 import clay "bento:engine/vendor/clay-odin"
 import "bento:execute"
 import "core:fmt"
+import "core:math"
 import "core:mem"
 import vmem "core:mem/virtual"
 
@@ -26,6 +27,9 @@ ui_texture: int
 frame: ^engine.ClayNineSliceFrame
 selected_color: engine.Color
 canvas_color: engine.Color
+canvas_width :: 38
+canvas_height :: 28
+canvas := [28][38]engine.Color{}
 font_32: int
 
 palette :: [3]engine.Color{{123, 123, 123, 255}, {233, 21, 12, 255}, {100, 24, 255, 255}}
@@ -181,21 +185,6 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 					textColor = engine.clay_engine_color_to_clay(engine.color(254, 170, 228, 255)),
 				},
 			)
-
-			canvas_data := clay.GetElementData(clay.ID("canvas"))
-			canvas_text := fmt.aprintf(
-				"Canvas: (%.2f, %.2f)",
-				canvas_data.boundingBox.width,
-				canvas_data.boundingBox.height,
-				allocator = state.scratch_allocator,
-			)
-			clay.Text(
-				canvas_text,
-				{
-					fontId = u16(font_32),
-					textColor = engine.clay_engine_color_to_clay(engine.color(254, 170, 228, 255)),
-				},
-			)
 		}
 
 
@@ -214,7 +203,10 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 			{
 				layout = {
 					layoutDirection = clay.LayoutDirection.TopToBottom,
-					sizing = {clay.SizingGrow({}), clay.SizingGrow({})},
+					sizing = {
+						clay.SizingFixed(16 * canvas_width),
+						clay.SizingFixed(16 * canvas_height),
+					},
 					padding = clay.PaddingAll(16),
 					childAlignment = {y = clay.LayoutAlignmentY.Center},
 				},
@@ -222,9 +214,15 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 			},
 			) {
 
-				pressed := engine.input_pressed(input, .INPUT_MOUSE_BUTTON_LEFT)
+				canvas_data := clay.GetElementData(clay.ID("canvas"))
+				pressed := engine.input_state(input, .INPUT_MOUSE_BUTTON_LEFT) > 0
 				if clay.Hovered() && pressed {
-					canvas_color = selected_color
+					mouse_x := f32(input.mouse_x)
+					mouse_y := f32(input.mouse_y)
+
+					x := math.floor_div(int(mouse_x - canvas_data.boundingBox.x), 16)
+					y := math.floor_div(int(mouse_y - canvas_data.boundingBox.y), 16)
+					canvas[y][x] = selected_color
 				}
 			}
 
@@ -290,17 +288,20 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 
 	engine.platform_clay_render_commands(state.cmdbuf, &clay_render_commands, state)
 
-	canvas := clay.GetElementData(clay.ID("canvas"))
-	engine.cmd_draw_rect(
-		state.cmdbuf,
-		engine.rect(
-			f64(canvas.boundingBox.x),
-			f64(canvas.boundingBox.y),
-			f64(canvas.boundingBox.width),
-			f64(canvas.boundingBox.height),
-		),
-		canvas_color,
-	)
+	clay_canvas := clay.GetElementData(clay.ID("canvas"))
+
+	for row, i in canvas {
+		r := i * 16
+		for col, j in row {
+			c := j * 16
+			pos := engine.vector2(
+				f64(clay_canvas.boundingBox.x) + f64(c),
+				f64(clay_canvas.boundingBox.y) + f64(r),
+			)
+			engine.cmd_draw_rect(state.cmdbuf, engine.rect(pos.x, pos.y, 16, 16), col)
+		}
+	}
+
 
 	return state.cmdbuf
 }
