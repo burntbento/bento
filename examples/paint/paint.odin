@@ -4,6 +4,7 @@ import "base:runtime"
 import "bento:engine"
 import clay "bento:engine/vendor/clay-odin"
 import "bento:execute"
+import "core:fmt"
 import "core:mem"
 import vmem "core:mem/virtual"
 
@@ -23,7 +24,11 @@ arena: clay.Arena
 
 ui_texture: int
 frame: ^engine.ClayNineSliceFrame
+selected_color: engine.Color
+canvas_color: engine.Color
 font_32: int
+
+palette :: [3]engine.Color{{123, 123, 123, 255}, {233, 21, 12, 255}, {100, 24, 255, 255}}
 
 measure_text :: proc "c" (
 	text: clay.StringSlice,
@@ -106,6 +111,13 @@ init :: proc(platform: ^engine.Platform) {
 }
 
 update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
+	vmem.arena_free_all(&state.scratch_arena)
+
+	is_mouse_down := engine.input_pressed(input, .INPUT_MOUSE_BUTTON_RIGHT)
+	clay.SetPointerState({f32(input.mouse_x), f32(input.mouse_y)}, is_mouse_down)
+
+	sidebar_id := clay.ID("SideBar")
+	// sidebar_data := clay.GetElementData(sidebar_id)
 
 	clay.BeginLayout()
 
@@ -140,8 +152,45 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 				},
 			)
 
+
+			color_text := fmt.aprintf(
+				"Color: (%d, %d, %d)",
+				selected_color.r,
+				selected_color.g,
+				selected_color.b,
+				allocator = state.scratch_allocator,
+			)
 			clay.Text(
-				"Selected Color: (255, 255, 255)",
+				color_text,
+				{
+					fontId = u16(font_32),
+					textColor = engine.clay_engine_color_to_clay(engine.color(254, 170, 228, 255)),
+				},
+			)
+
+			mouse_position_text := fmt.aprintf(
+				"Mouse: (%.2f, %.2f)",
+				input.mouse_x,
+				input.mouse_y,
+				allocator = state.scratch_allocator,
+			)
+			clay.Text(
+				mouse_position_text,
+				{
+					fontId = u16(font_32),
+					textColor = engine.clay_engine_color_to_clay(engine.color(254, 170, 228, 255)),
+				},
+			)
+
+			canvas_data := clay.GetElementData(clay.ID("canvas"))
+			canvas_text := fmt.aprintf(
+				"Canvas: (%.2f, %.2f)",
+				canvas_data.boundingBox.width,
+				canvas_data.boundingBox.height,
+				allocator = state.scratch_allocator,
+			)
+			clay.Text(
+				canvas_text,
 				{
 					fontId = u16(font_32),
 					textColor = engine.clay_engine_color_to_clay(engine.color(254, 170, 228, 255)),
@@ -169,15 +218,17 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 					padding = clay.PaddingAll(16),
 					childAlignment = {y = clay.LayoutAlignmentY.Center},
 				},
-				backgroundColor = engine.clay_engine_color_to_clay(
-					engine.color(255, 247, 228, 255),
-				),
+				backgroundColor = engine.clay_engine_color_to_clay(engine.WHITE),
 			},
 			) {
+
+				pressed := engine.input_pressed(input, .INPUT_MOUSE_BUTTON_LEFT)
+				if clay.Hovered() && pressed {
+					canvas_color = selected_color
+				}
 			}
 
-
-			if clay.UI(clay.ID("SideBar"))(
+			if clay.UI(sidebar_id)(
 			{
 				layout = {
 					layoutDirection = clay.LayoutDirection.TopToBottom,
@@ -213,36 +264,20 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 					),
 				},
 				) {
-					if clay.UI(clay.ID("cell"))(
-					{
-						layout = {
-							sizing = {clay.SizingFixed(30), clay.SizingFixed(30)},
-							padding = clay.PaddingAll(5),
-						},
-						backgroundColor = engine.clay_engine_color_to_clay(engine.WHITE),
-					},
-					) {}
-
-					if clay.UI(clay.ID("cell"))(
-					{
-						layout = {
-							sizing = {clay.SizingFixed(30), clay.SizingFixed(30)},
-							padding = clay.PaddingAll(5),
-						},
-						backgroundColor = engine.clay_engine_color_to_clay(engine.RED),
-					},
-					) {}
+					for c, i in palette {
+						cell_component(i, c, input)
+					}
 				}
 			}
 		}
 
 	}
 
-
 	clay_render_commands = clay.EndLayout(f32(dt))
 
 	return true
 }
+
 
 render :: proc() -> ^engine.RenderCommandBuffer {
 	// reset command buffer, it is being allocated in the hot loop
@@ -255,6 +290,17 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 
 	engine.platform_clay_render_commands(state.cmdbuf, &clay_render_commands, state)
 
+	canvas := clay.GetElementData(clay.ID("canvas"))
+	engine.cmd_draw_rect(
+		state.cmdbuf,
+		engine.rect(
+			f64(canvas.boundingBox.x),
+			f64(canvas.boundingBox.y),
+			f64(canvas.boundingBox.width),
+			f64(canvas.boundingBox.height),
+		),
+		canvas_color,
+	)
 
 	return state.cmdbuf
 }
@@ -262,6 +308,28 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 shutdown :: proc() {
 	free(frame)
 	free(clay_memory)
+
+	vmem.arena_free_all(&state.scratch_arena)
 	// free state
 	engine.game_state_destroy(state)
+}
+
+
+cell_component :: proc(id: int, color: engine.Color, input: ^engine.GameInput) {
+	key := clay.ID(fmt.aprintf("cell-%d", id, allocator = state.scratch_allocator))
+	if clay.UI(key)(
+	{
+		layout = {
+			sizing = {clay.SizingFixed(30), clay.SizingFixed(30)},
+			padding = clay.PaddingAll(5),
+		},
+		backgroundColor = engine.clay_engine_color_to_clay(color),
+	},
+	) {
+
+		pressed := engine.input_pressed(input, .INPUT_MOUSE_BUTTON_LEFT)
+		if clay.PointerOver(key) && pressed {
+			selected_color = color
+		}
+	}
 }
