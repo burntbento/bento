@@ -4,6 +4,8 @@ import "base:runtime"
 import "bento:engine"
 import clay "bento:engine/vendor/clay-odin"
 import "bento:execute"
+import "core:mem"
+import vmem "core:mem/virtual"
 
 // -- Globals -- //
 
@@ -21,6 +23,7 @@ arena: clay.Arena
 
 ui_texture: int
 frame: ^engine.ClayNineSliceFrame
+font_32: int
 
 measure_text :: proc "c" (
 	text: clay.StringSlice,
@@ -71,6 +74,12 @@ init :: proc(platform: ^engine.Platform) {
 		panic(engine.fmt_error(err, context.temp_allocator))
 	}
 
+	// init scratch arena
+	err2 := vmem.arena_init_growing(&state.scratch_arena, mem.Gigabyte)
+	ensure(err2 == nil)
+	state.scratch_allocator = vmem.arena_allocator(&state.scratch_arena)
+	context.temp_allocator = state.scratch_allocator
+
 	ui_texture, _ = engine.load_texture("examples/paint/editor.png", state)
 
 	// fill in screen_width and height
@@ -85,6 +94,9 @@ init :: proc(platform: ^engine.Platform) {
 		clay.Dimensions{width = f32(screen_width), height = f32(screen_height)},
 		{handler = engine.error_handler},
 	)
+	clay.SetMeasureTextFunction(measure_text, nil)
+
+	font_32 = engine.load_font("examples/paint/monogram.ttf", 32, state)
 
 	frame = new(engine.ClayNineSliceFrame)
 	frame.texture = ui_texture
@@ -97,41 +109,135 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 
 	clay.BeginLayout()
 
-	if clay.UI(clay.ID("outercontainer"))(
+	if clay.UI(clay.ID("outercontainter"))(
 	{
 		layout = {
+			layoutDirection = clay.LayoutDirection.TopToBottom,
 			sizing = {clay.SizingGrow({}), clay.SizingGrow({})},
-			padding = clay.PaddingAll(0),
-			childGap = 16,
+			padding = clay.PaddingAll(10),
+			childGap = 5,
 		},
-		backgroundColor = engine.clay_engine_color_to_clay(engine.WHITE),
+		backgroundColor = engine.clay_engine_color_to_clay(engine.color(40, 40, 46, 255)),
 	},
 	) {
-		if clay.UI(clay.ID("canvas"))(
+
+		if clay.UI(clay.ID("header"))(
 		{
 			layout = {
-				layoutDirection = clay.LayoutDirection.TopToBottom,
+				layoutDirection = clay.LayoutDirection.LeftToRight,
+				sizing = {clay.SizingPercent(1), clay.SizingPercent(0.1)},
+				padding = clay.PaddingAll(5),
+				childGap = 16,
+			},
+			backgroundColor = engine.clay_engine_color_to_clay(engine.color(40, 40, 46, 255)),
+		},
+		) {
+			clay.Text(
+				"Paint Something! :)",
+				{
+					fontId = u16(font_32),
+					textColor = engine.clay_engine_color_to_clay(engine.color(254, 170, 228, 255)),
+				},
+			)
+
+			clay.Text(
+				"Selected Color: (255, 255, 255)",
+				{
+					fontId = u16(font_32),
+					textColor = engine.clay_engine_color_to_clay(engine.color(254, 170, 228, 255)),
+				},
+			)
+		}
+
+
+		if clay.UI(clay.ID("body"))(
+		{
+			layout = {
+				layoutDirection = clay.LayoutDirection.LeftToRight,
 				sizing = {clay.SizingGrow({}), clay.SizingGrow({})},
-				padding = clay.PaddingAll(16),
-				childAlignment = {y = clay.LayoutAlignmentY.Center},
+				padding = clay.PaddingAll(10),
+				childGap = 16,
 			},
-			backgroundColor = engine.clay_engine_color_to_clay(engine.WHITE),
+			backgroundColor = engine.clay_engine_color_to_clay(engine.color(40, 40, 46, 255)),
 		},
-		) {}
+		) {
+			if clay.UI(clay.ID("canvas"))(
+			{
+				layout = {
+					layoutDirection = clay.LayoutDirection.TopToBottom,
+					sizing = {clay.SizingGrow({}), clay.SizingGrow({})},
+					padding = clay.PaddingAll(16),
+					childAlignment = {y = clay.LayoutAlignmentY.Center},
+				},
+				backgroundColor = engine.clay_engine_color_to_clay(
+					engine.color(255, 247, 228, 255),
+				),
+			},
+			) {
+			}
 
 
-		if clay.UI(clay.ID("SideBar"))(
-		{
-			layout = {
-				layoutDirection = clay.LayoutDirection.TopToBottom,
-				sizing = {clay.SizingFixed(300), clay.SizingGrow({})},
-				padding = clay.PaddingAll(16),
-				childAlignment = {y = clay.LayoutAlignmentY.Center},
+			if clay.UI(clay.ID("SideBar"))(
+			{
+				layout = {
+					layoutDirection = clay.LayoutDirection.TopToBottom,
+					sizing = {clay.SizingFixed(300), clay.SizingGrow({})},
+					padding = clay.PaddingAll(16),
+					childAlignment = {
+						y = clay.LayoutAlignmentY.Top,
+						x = clay.LayoutAlignmentX.Left,
+					},
+				},
+				custom = {customData = frame},
 			},
-			custom = {customData = frame},
-		},
-		) {}
+			) {
+				clay.Text(
+					"Palette",
+					{
+						fontId = u16(font_32),
+						textColor = engine.clay_engine_color_to_clay(
+							engine.color(254, 170, 228, 255),
+						),
+					},
+				)
+				if clay.UI(clay.ID("Palette"))(
+				{
+					layout = {
+						layoutDirection = clay.LayoutDirection.LeftToRight,
+						sizing = {clay.SizingGrow({}), clay.SizingGrow({})},
+						padding = clay.PaddingAll(5),
+						childGap = 5,
+					},
+					backgroundColor = engine.clay_engine_color_to_clay(
+						engine.color(40, 40, 46, 255),
+					),
+				},
+				) {
+					if clay.UI(clay.ID("cell"))(
+					{
+						layout = {
+							sizing = {clay.SizingFixed(30), clay.SizingFixed(30)},
+							padding = clay.PaddingAll(5),
+						},
+						backgroundColor = engine.clay_engine_color_to_clay(engine.WHITE),
+					},
+					) {}
+
+					if clay.UI(clay.ID("cell"))(
+					{
+						layout = {
+							sizing = {clay.SizingFixed(30), clay.SizingFixed(30)},
+							padding = clay.PaddingAll(5),
+						},
+						backgroundColor = engine.clay_engine_color_to_clay(engine.RED),
+					},
+					) {}
+				}
+			}
+		}
+
 	}
+
 
 	clay_render_commands = clay.EndLayout(f32(dt))
 
@@ -148,6 +254,7 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 	engine.cmd_clear_screen(state.cmdbuf, engine.WHITE)
 
 	engine.platform_clay_render_commands(state.cmdbuf, &clay_render_commands, state)
+
 
 	return state.cmdbuf
 }
