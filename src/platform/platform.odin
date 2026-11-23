@@ -1109,7 +1109,7 @@ input_set_state :: proc(input: ^engine.GameInput, type: engine.InputType, state:
 	// NOTE: this guard helps with the occasional "scan code unknown" e.g. power state
 	// this will give back 0 and after standardising will give -4 which is out of bounds
 	// hence it will crash
-	if int(type) < 0 do return
+	if int(type) < 0 || int(type) > len(engine.InputType) - 1 do return
 
 	if (state > 0.0 + DEADZONE && in_between_deadzone(input.state[type])) {
 		input.pressed[type] = true
