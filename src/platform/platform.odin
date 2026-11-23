@@ -1158,9 +1158,8 @@ update_input :: proc(input: ^engine.GameInput) {
 			state: f64 = (evt.type == sdl.EventType.MOUSE_BUTTON_DOWN) ? 1.0 : 0.0
 			input_set_state(input, type, state)
 		} else if (evt.type == sdl.EventType.MOUSE_MOTION) {
-			density := f64(sdl.GetWindowPixelDensity(window)) // NOTE: added this for hpdi windows and mouse position
-			input.mouse_x = f64(evt.motion.x) * density
-			input.mouse_y = f64(evt.motion.y) * density
+			input.mouse_x = f64(evt.motion.x)
+			input.mouse_y = f64(evt.motion.y)
 		} else if (evt.type == sdl.EventType.GAMEPAD_ADDED) {
 			if (gamepad == nil) {
 				gamepad = sdl.OpenGamepad(evt.gdevice.which)
