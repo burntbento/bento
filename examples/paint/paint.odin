@@ -157,20 +157,14 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 			)
 
 
-			color_text := fmt.aprintf(
-				"Color: (%d, %d, %d)",
-				selected_color.r,
-				selected_color.g,
-				selected_color.b,
-				allocator = state.scratch_allocator,
-			)
 			clay.Text(
-				color_text,
+				"Color:",
 				{
 					fontId = u16(font_32),
 					textColor = engine.clay_engine_color_to_clay(engine.color(254, 170, 228, 255)),
 				},
 			)
+			cell_component(1000, selected_color, input)
 
 			mouse_position_text := fmt.aprintf(
 				"Mouse: (%.2f, %.2f)",
