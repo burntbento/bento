@@ -111,14 +111,14 @@ init :: proc(platform: ^engine.Platform) {
 	frame.texture = ui_texture
 	frame.origin = engine.vector2(0, 0)
 	frame.tile_size = 16
-	frame.scale = 4
+	frame.scale = 2
 }
 
 update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 	vmem.arena_free_all(&state.scratch_arena)
 
-	is_mouse_down := engine.input_pressed(input, .INPUT_MOUSE_BUTTON_RIGHT)
-	clay.SetPointerState({f32(input.mouse_x), f32(input.mouse_y)}, is_mouse_down)
+	pressed := engine.input_state(input, .INPUT_MOUSE_BUTTON_LEFT) > 0
+	clay.SetPointerState({f32(input.mouse_x), f32(input.mouse_y)}, pressed)
 
 	sidebar_id := clay.ID("SideBar")
 	// sidebar_data := clay.GetElementData(sidebar_id)
@@ -209,7 +209,6 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 			) {
 
 				canvas_data := clay.GetElementData(clay.ID("canvas"))
-				pressed := engine.input_state(input, .INPUT_MOUSE_BUTTON_LEFT) > 0
 				if clay.Hovered() && pressed {
 					mouse_x := f32(input.mouse_x)
 					mouse_y := f32(input.mouse_y)
@@ -226,8 +225,9 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 					layoutDirection = clay.LayoutDirection.TopToBottom,
 					sizing = {clay.SizingFixed(300), clay.SizingGrow({})},
 					padding = clay.PaddingAll(16),
+					childGap = 5,
 					childAlignment = {
-						y = clay.LayoutAlignmentY.Top,
+						y = clay.LayoutAlignmentY.Center,
 						x = clay.LayoutAlignmentX.Left,
 					},
 				},
@@ -259,6 +259,70 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 					for c, i in palette {
 						cell_component(i, c, input)
 					}
+				}
+
+				if clay.UI(clay.ID("Erase"))(
+				{
+					layout = {
+						layoutDirection = clay.LayoutDirection.TopToBottom,
+						sizing = {clay.SizingGrow({}), clay.SizingPercent(0.1)},
+						padding = clay.PaddingAll(10),
+						childGap = 5,
+						childAlignment = {
+							y = clay.LayoutAlignmentY.Center,
+							x = clay.LayoutAlignmentX.Center,
+						},
+					},
+					custom = {customData = frame},
+				},
+				) {
+					clay.Text(
+						"Eraser",
+						{
+							fontId = u16(font_32),
+							textColor = engine.clay_engine_color_to_clay(
+								engine.color(254, 170, 228, 255),
+							),
+						},
+					)
+					if clay.Hovered() && pressed {
+						selected_color = engine.WHITE
+					}
+
+				}
+
+				if clay.UI(clay.ID("Clear"))(
+				{
+					layout = {
+						layoutDirection = clay.LayoutDirection.TopToBottom,
+						sizing = {clay.SizingGrow({}), clay.SizingPercent(0.1)},
+						padding = clay.PaddingAll(10),
+						childGap = 5,
+						childAlignment = {
+							y = clay.LayoutAlignmentY.Center,
+							x = clay.LayoutAlignmentX.Center,
+						},
+					},
+					custom = {customData = frame},
+				},
+				) {
+					clay.Text(
+						"Clear",
+						{
+							fontId = u16(font_32),
+							textColor = engine.clay_engine_color_to_clay(
+								engine.color(254, 170, 228, 255),
+							),
+						},
+					)
+					if clay.Hovered() && pressed {
+						for row, j in canvas {
+							for _, i in row {
+								canvas[j][i] = engine.WHITE
+							}
+						}
+					}
+
 				}
 			}
 		}
