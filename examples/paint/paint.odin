@@ -32,7 +32,26 @@ canvas_height :: 28
 canvas := [28][38]engine.Color{}
 font_32: int
 
-palette :: [3]engine.Color{{123, 123, 123, 255}, {233, 21, 12, 255}, {100, 24, 255, 255}}
+palette :: [?]engine.Color {
+	{40, 40, 46, 255},
+	{108, 86, 113, 255},
+	{217, 200, 191, 255},
+	{249, 130, 132, 255},
+	{176, 169, 228, 255},
+	{172, 204, 228, 255},
+	{179, 227, 218, 255},
+	{254, 170, 228, 255},
+	{135, 168, 137, 255},
+	{176, 235, 147, 255},
+	{233, 245, 157, 255},
+	{255, 230, 198, 255},
+	{222, 163, 139, 255},
+	{255, 195, 132, 255},
+	{255, 247, 160, 255},
+	{255, 247, 228, 255},
+}
+num_palette_rows: int
+num_palette_cells :: 6
 
 measure_text :: proc "c" (
 	text: clay.StringSlice,
@@ -106,6 +125,11 @@ init :: proc(platform: ^engine.Platform) {
 	clay.SetMeasureTextFunction(measure_text, nil)
 
 	font_32 = engine.load_font("examples/paint/monogram.ttf", 32, state)
+
+	num_palette_rows = len(palette) / num_palette_cells
+
+	selected_color = engine.WHITE
+	clear_canvas()
 
 	frame = new(engine.ClayNineSliceFrame)
 	frame.texture = ui_texture
@@ -243,23 +267,39 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 						),
 					},
 				)
-				if clay.UI(clay.ID("Palette"))(
+
+				if clay.UI(clay.ID("PaletteDiv"))(
 				{
 					layout = {
-						layoutDirection = clay.LayoutDirection.LeftToRight,
+						layoutDirection = clay.LayoutDirection.TopToBottom,
 						sizing = {clay.SizingGrow({}), clay.SizingGrow({})},
 						padding = clay.PaddingAll(5),
-						childGap = 5,
+						childGap = 0,
+						childAlignment = {
+							y = clay.LayoutAlignmentY.Top,
+							x = clay.LayoutAlignmentX.Center,
+						},
 					},
-					backgroundColor = engine.clay_engine_color_to_clay(
-						engine.color(40, 40, 46, 255),
-					),
 				},
 				) {
-					for c, i in palette {
-						cell_component(i, c, input)
+					for i in 0 ..< num_palette_rows {
+						palette_component(i, input)
 					}
 				}
+				if clay.UI(clay.ID("Padding"))(
+				{
+					layout = {
+						layoutDirection = clay.LayoutDirection.TopToBottom,
+						sizing = {clay.SizingGrow({}), clay.SizingGrow({})},
+						padding = clay.PaddingAll(16),
+						childGap = 5,
+						childAlignment = {
+							y = clay.LayoutAlignmentY.Top,
+							x = clay.LayoutAlignmentX.Center,
+						},
+					},
+				},
+				) {}
 
 				if clay.UI(clay.ID("Erase"))(
 				{
@@ -316,11 +356,7 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 						},
 					)
 					if clay.Hovered() && pressed {
-						for row, j in canvas {
-							for _, i in row {
-								canvas[j][i] = engine.WHITE
-							}
-						}
+						clear_canvas()
 					}
 
 				}
@@ -389,6 +425,36 @@ cell_component :: proc(id: int, color: engine.Color, input: ^engine.GameInput) {
 		pressed := engine.input_pressed(input, .INPUT_MOUSE_BUTTON_LEFT)
 		if clay.PointerOver(key) && pressed {
 			selected_color = color
+		}
+	}
+}
+
+clear_canvas :: proc() {
+	for row, j in canvas {
+		for _, i in row {
+			canvas[j][i] = engine.WHITE
+		}
+	}
+}
+
+
+palette_component :: proc(row: int, input: ^engine.GameInput) {
+
+	if clay.UI(clay.ID("Palette"))(
+	{
+		layout = {
+			layoutDirection = clay.LayoutDirection.LeftToRight,
+			sizing = {clay.SizingGrow({}), clay.SizingGrow({})},
+			padding = clay.PaddingAll(5),
+			childGap = 5,
+		},
+		backgroundColor = engine.clay_engine_color_to_clay(engine.color(40, 40, 46, 255)),
+	},
+	) {
+		for c, i in palette {
+			if math.floor_div(i, num_palette_cells) == row {
+				cell_component(i, c, input)
+			}
 		}
 	}
 }
