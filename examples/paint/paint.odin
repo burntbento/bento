@@ -145,7 +145,6 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 	clay.SetPointerState({f32(input.mouse_x), f32(input.mouse_y)}, pressed)
 
 	sidebar_id := clay.ID("SideBar")
-	// sidebar_data := clay.GetElementData(sidebar_id)
 
 	clay.BeginLayout()
 
@@ -362,7 +361,6 @@ update :: proc(input: ^engine.GameInput, dt: f64) -> bool {
 				}
 			}
 		}
-
 	}
 
 	clay_render_commands = clay.EndLayout(f32(dt))
@@ -396,7 +394,6 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 		}
 	}
 
-
 	return state.cmdbuf
 }
 
@@ -404,7 +401,10 @@ shutdown :: proc() {
 	free(frame)
 	free(clay_memory)
 
+	// free scratch arena
 	vmem.arena_free_all(&state.scratch_arena)
+
+
 	// free state
 	engine.game_state_destroy(state)
 }
@@ -439,7 +439,6 @@ clear_canvas :: proc() {
 
 
 palette_component :: proc(row: int, input: ^engine.GameInput) {
-
 	if clay.UI(clay.ID("Palette"))(
 	{
 		layout = {
