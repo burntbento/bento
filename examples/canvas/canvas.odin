@@ -1,4 +1,4 @@
-package animation
+package canvas
 
 import "bento:engine"
 import "bento:execute"
