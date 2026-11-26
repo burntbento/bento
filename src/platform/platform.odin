@@ -263,7 +263,7 @@ begin_frame :: proc() {
 }
 
 end_frame :: proc() {
-	detach_canvas()
+	detach_framebufferobject()
 
 	// clear screen buffer
 	clear_screen(engine.WHITE)
@@ -1859,10 +1859,32 @@ get_canvas :: proc(canvas: int) -> ^FrameBufferObject {
 	return canvas_array[canvas]
 }
 
-get_canvas_texture_data :: proc(canvas: int) -> engine.CanvasData {
-	c := get_canvas(canvas)
-	return engine.CanvasData{width = c.width, height = c.height, texture_handle = c.texture_handle}
+present_canvas :: proc(
+	position: engine.Vector2,
+	scale: f64,
+	rotation: f64,
+	pivot: engine.Vector2,
+	canvas_handle: int,
+	color: engine.Color,
+	flip_x, flip_y: bool,
+	stretch_x, stretch_y: int,
+) {
+	c := get_canvas(canvas_handle)
+	draw_sprite(
+		position,
+		scale,
+		rotation,
+		pivot,
+		c.texture_handle,
+		engine.rect(0, 0, f64(c.width), f64(c.height)),
+		color,
+		flip_x,
+		flip_y,
+		stretch_x,
+		stretch_y,
+	)
 }
+
 
 destroy_all_canvas :: proc() {
 	for i in 0 ..< canvas_count {
@@ -1876,7 +1898,7 @@ attach_canvas :: proc(canvas: int) {
 }
 
 detach_canvas :: proc() {
-	detach_framebufferobject()
+	attach_canvas(default_canvas)
 }
 
 

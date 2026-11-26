@@ -5,11 +5,21 @@ import "bento:engine"
 MAXCOMMANDS :: 2048
 
 // render command types
-RenderCommandPushCanvas :: struct {
+RenderCommandPresentCanvas :: struct {
+	position:             engine.Vector2,
+	scale, rotation:      f64,
+	pivot:                engine.Vector2,
+	canvas_handle:        int,
+	color:                engine.Color,
+	flip_x, flip_y:       bool,
+	stretch_x, stretch_y: int,
+}
+
+RenderCommandAttachCanvas :: struct {
 	canvas: int,
 }
 
-RenderCommandPopCanvas :: struct {}
+RenderCommandDetachCanvas :: struct {}
 
 RenderCommandClearScreen :: struct {
 	color: Color,
@@ -95,6 +105,9 @@ RenderCommand :: union {
 	RenderCommandEndClippingRect,
 	RenderCommandDrawArc,
 	RenderCommandDrawLine,
+	RenderCommandAttachCanvas,
+	RenderCommandDetachCanvas,
+	RenderCommandPresentCanvas,
 }
 
 // buffer to be read and written to
@@ -246,4 +259,40 @@ cmd_end_clipping_rect :: proc(cmdbuf: ^RenderCommandBuffer) {
 // draw line
 cmd_draw_line :: proc(cmdbuf: ^RenderCommandBuffer, x1, y1, x2, y2: f64, color: engine.Color) {
 	cmd_push(cmdbuf, RenderCommandDrawLine{x1, y1, x2, y2, color})
+}
+
+// canvas
+cmd_attach_canvas :: proc(cmdbuf: ^RenderCommandBuffer, canvas: int) {
+	cmd_push(cmdbuf, RenderCommandAttachCanvas{canvas = canvas})
+}
+
+cmd_detach_canvas :: proc(cmdbuf: ^RenderCommandBuffer) {
+	cmd_push(cmdbuf, RenderCommandDetachCanvas{})
+}
+
+cmd_present_canvas :: proc(
+	cmdbuf: ^RenderCommandBuffer,
+	position: engine.Vector2,
+	scale, rotation: f64,
+	pivot: engine.Vector2,
+	canvas_handle: int,
+	color: engine.Color,
+	flip_x, flip_y: bool,
+	stretch_x, stretch_y: int,
+) {
+	cmd_push(
+		cmdbuf,
+		RenderCommandPresentCanvas {
+			position,
+			scale,
+			rotation,
+			pivot,
+			canvas_handle,
+			color,
+			flip_x,
+			flip_y,
+			stretch_x,
+			stretch_y,
+		},
+	)
 }
