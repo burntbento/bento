@@ -45,7 +45,7 @@ gamepad: ^sdl.Gamepad // for gamepad
 platform_storage: ^PlatformStorage // sdl platform_storage interface
 audio_device: sdl.AudioDeviceID // sdl audio device
 render_cam: ^engine.Camera2D // sdl renderer
-framebuffer: ^FrameBufferObject // frame buffer to swap
+default_canvas: int // frame buffer to swap
 
 
 text_buffer: [64]u8 // text buffer for text input not key input
@@ -235,7 +235,7 @@ init :: proc(config: engine.PlatformConfig) {
 	create_font_texture(window_width, window_height)
 
 	// framebuffer
-	framebuffer = create_framebufferobject(window_width, window_height)
+	default_canvas = create_canvas()
 
 	// storage
 	platform_storage_init()
@@ -259,17 +259,18 @@ init :: proc(config: engine.PlatformConfig) {
 }
 
 begin_frame :: proc() {
-	attach_framebufferobject(framebuffer)
+	attach_canvas(default_canvas)
 }
 
 end_frame :: proc() {
-	detach_framebufferobject()
+	detach_canvas()
 
 	// clear screen buffer
 	clear_screen(engine.WHITE)
 
 	// present frame buffer
-	present_framebufferobject(framebuffer)
+	c := get_canvas(default_canvas)
+	present_framebufferobject(c)
 
 	if !sdl.GL_SwapWindow(window) {
 		logger(.ERROR, "Failed to swap buffers")
@@ -990,8 +991,8 @@ shutdown :: proc() {
 	// destory textures
 	destroy_all_textures()
 
-	// destroy framebuffer
-	destroy_framebufferobject(framebuffer)
+	// destroy canvas
+	destroy_all_canvas()
 
 	// destory fonts
 	destroy_all_fonts()
@@ -1829,11 +1830,57 @@ destroy_shader_program :: proc(shader_program: ^ShaderProgramPipeline) {
 // canvases, but this means now i can do post processing.
 FrameBufferObject :: struct {
 	buffer:         u32,
+	width:          int,
+	height:         int,
 	texture_handle: int,
 	allocator:      mem.Allocator,
 }
 
-create_framebufferobject :: proc(
+MAX_CANVAS :: 16
+canvas_array: [MAX_CANVAS]^FrameBufferObject
+canvas_count: int
+
+create_canvas :: proc() -> int {
+	if canvas_count > MAX_CANVAS - 1 {
+		logger(.ERROR, "Failed to create canvas, max canvas reached")
+		return -1
+	}
+	canvas_array[canvas_count] = _create_framebufferobject(window_width, window_height)
+	canvas_count += 1
+	return canvas_count - 1
+}
+
+@(private)
+get_canvas :: proc(canvas: int) -> ^FrameBufferObject {
+	if canvas < 0 || canvas > canvas_count {
+		logger(.ERROR, "Failed to get canvas")
+		return canvas_array[default_canvas]
+	}
+	return canvas_array[canvas]
+}
+
+get_canvas_texture_data :: proc(canvas: int) -> engine.CanvasData {
+	c := get_canvas(canvas)
+	return engine.CanvasData{width = c.width, height = c.height, texture_handle = c.texture_handle}
+}
+
+destroy_all_canvas :: proc() {
+	for i in 0 ..< canvas_count {
+		destroy_framebufferobject(canvas_array[i])
+	}
+}
+
+attach_canvas :: proc(canvas: int) {
+	c := get_canvas(canvas)
+	attach_framebufferobject(c)
+}
+
+detach_canvas :: proc() {
+	detach_framebufferobject()
+}
+
+
+_create_framebufferobject :: proc(
 	width, height: int,
 	allocator := context.allocator,
 ) -> ^FrameBufferObject {
@@ -1844,6 +1891,9 @@ create_framebufferobject :: proc(
 
 	fbo.texture_handle = create_texture(width, height, 4, 0, nil)
 	texture_data := get_texture(fbo.texture_handle)
+
+	fbo.width = width
+	fbo.height = height
 
 	// create frame buffers
 	gl.CreateFramebuffers(1, &fbo.buffer)
