@@ -1,3 +1,7 @@
+/*
+	 The idea for the canvas is that we can so several render passes, i.e if you cwant to add a crt shader pass over the screen, you'll have to draw onto a texture and do a shader pass over the whole texture.
+*/
+
 package canvas
 
 import "bento:engine"
@@ -220,7 +224,6 @@ render :: proc() -> ^engine.RenderCommandBuffer {
 		0,
 		0,
 	)
-
 
 	return state.cmdbuf
 }
