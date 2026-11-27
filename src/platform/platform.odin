@@ -258,6 +258,18 @@ init :: proc(config: engine.PlatformConfig) {
 
 }
 
+get_canvas_info :: proc(canvas_handle: int) -> engine.CanvasInfo {
+	c := get_canvas(canvas_handle)
+	return engine.CanvasInfo{width = c.width, height = c.height, texture_handle = c.texture_handle}
+}
+
+get_canvas_dimensions :: proc(canvas_handle: int) -> (width: int, height: int) {
+	// NOTE: normalise by pixel density, not sure if this will cause issues for other things?
+	c := get_canvas(canvas_handle)
+	return int(f32(c.width) / window_density), int(f32(c.height) / window_density)
+}
+
+
 begin_frame :: proc() {
 	attach_canvas(default_canvas)
 }

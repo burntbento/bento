@@ -53,6 +53,8 @@ engine_run :: proc(game_data: ^Game) {
 		get_window_size_pixels = platform.get_window_size_pixels,
 		get_window_density     = platform.get_window_density,
 		create_canvas          = platform.create_canvas,
+		get_canvas_info        = platform.get_canvas_info,
+		get_canvas_dimensions  = platform.get_canvas_dimensions,
 		destroy_all_sounds     = platform.destroy_all_sounds,
 		load_sound             = platform.load_sound,
 		play_sound             = platform.play_sound,
