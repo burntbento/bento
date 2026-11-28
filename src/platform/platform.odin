@@ -1865,7 +1865,14 @@ create_canvas :: proc() -> int {
 @(private)
 get_canvas :: proc(canvas: int) -> ^FrameBufferObject {
 	if canvas < 0 || canvas > canvas_count {
-		logger(.ERROR, "Failed to get canvas")
+		if canvas != -1 {
+			logger(
+				.ERROR,
+				"Failed to get canvas, out of bounds. Returning default canvas: want %d bound: %d",
+				canvas,
+				canvas_count,
+			)
+		}
 		return canvas_array[default_canvas]
 	}
 	return canvas_array[canvas]
