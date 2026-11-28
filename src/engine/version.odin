@@ -3,7 +3,16 @@ package engine
 import "core:os"
 import "core:strings"
 
+
 get_version :: proc(allocator := context.allocator) -> string {
+	if VERSION != "" {
+		return VERSION
+	}
+	return create_version(allocator)
+}
+
+create_version :: proc(allocator := context.allocator) -> string {
+
 	_, stdout, _, err := os.process_exec(
 		{
 			command = {
