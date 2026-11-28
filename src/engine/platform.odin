@@ -42,6 +42,9 @@ Platform :: struct {
 	get_window_size:        proc() -> (int, int),
 	get_window_density:     proc() -> f32,
 	get_window_size_pixels: proc() -> (int, int),
+	create_canvas:          proc() -> int,
+	get_canvas_info:        proc(canvas_handle: int) -> CanvasInfo,
+	get_canvas_dimensions:  proc(canvas_handle: int) -> (width: int, height: int),
 
 	// audio
 	is_sound_playing:       proc(handle: int) -> bool,

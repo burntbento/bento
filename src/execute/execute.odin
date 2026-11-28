@@ -52,6 +52,9 @@ engine_run :: proc(game_data: ^Game) {
 		get_window_size        = platform.get_window_size,
 		get_window_size_pixels = platform.get_window_size_pixels,
 		get_window_density     = platform.get_window_density,
+		create_canvas          = platform.create_canvas,
+		get_canvas_info        = platform.get_canvas_info,
+		get_canvas_dimensions  = platform.get_canvas_dimensions,
 		destroy_all_sounds     = platform.destroy_all_sounds,
 		load_sound             = platform.load_sound,
 		play_sound             = platform.play_sound,
@@ -160,6 +163,23 @@ engine_run :: proc(game_data: ^Game) {
 					platform.end_clip_rect()
 				case engine.RenderCommandDrawLine:
 					platform.draw_line(v.x1, v.y1, v.x2, v.y2, v.color)
+				case engine.RenderCommandAttachCanvas:
+					platform.attach_canvas(v.canvas)
+				case engine.RenderCommandDetachCanvas:
+					platform.detach_canvas()
+				case engine.RenderCommandPresentCanvas:
+					platform.present_canvas(
+						v.position,
+						v.scale,
+						v.rotation,
+						v.pivot,
+						v.canvas_handle,
+						v.color,
+						v.flip_x,
+						v.flip_y,
+						v.stretch_x,
+						v.stretch_y,
+					)
 				case:
 					break
 				}

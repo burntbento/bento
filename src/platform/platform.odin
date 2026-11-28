@@ -45,7 +45,7 @@ gamepad: ^sdl.Gamepad // for gamepad
 platform_storage: ^PlatformStorage // sdl platform_storage interface
 audio_device: sdl.AudioDeviceID // sdl audio device
 render_cam: ^engine.Camera2D // sdl renderer
-framebuffer: ^FrameBufferObject // frame buffer to swap
+default_canvas: int // frame buffer to swap
 
 
 text_buffer: [64]u8 // text buffer for text input not key input
@@ -235,7 +235,7 @@ init :: proc(config: engine.PlatformConfig) {
 	create_font_texture(window_width, window_height)
 
 	// framebuffer
-	framebuffer = create_framebufferobject(window_width, window_height)
+	default_canvas = create_canvas()
 
 	// storage
 	platform_storage_init()
@@ -258,8 +258,20 @@ init :: proc(config: engine.PlatformConfig) {
 
 }
 
+get_canvas_info :: proc(canvas_handle: int) -> engine.CanvasInfo {
+	c := get_canvas(canvas_handle)
+	return engine.CanvasInfo{width = c.width, height = c.height, texture_handle = c.texture_handle}
+}
+
+get_canvas_dimensions :: proc(canvas_handle: int) -> (width: int, height: int) {
+	// NOTE: normalise by pixel density, not sure if this will cause issues for other things?
+	c := get_canvas(canvas_handle)
+	return int(f32(c.width) / window_density), int(f32(c.height) / window_density)
+}
+
+
 begin_frame :: proc() {
-	attach_framebufferobject(framebuffer)
+	attach_canvas(default_canvas)
 }
 
 end_frame :: proc() {
@@ -269,7 +281,8 @@ end_frame :: proc() {
 	clear_screen(engine.WHITE)
 
 	// present frame buffer
-	present_framebufferobject(framebuffer)
+	c := get_canvas(default_canvas)
+	present_framebufferobject(c)
 
 	if !sdl.GL_SwapWindow(window) {
 		logger(.ERROR, "Failed to swap buffers")
@@ -990,8 +1003,8 @@ shutdown :: proc() {
 	// destory textures
 	destroy_all_textures()
 
-	// destroy framebuffer
-	destroy_framebufferobject(framebuffer)
+	// destroy canvas
+	destroy_all_canvas()
 
 	// destory fonts
 	destroy_all_fonts()
@@ -1829,11 +1842,87 @@ destroy_shader_program :: proc(shader_program: ^ShaderProgramPipeline) {
 // canvases, but this means now i can do post processing.
 FrameBufferObject :: struct {
 	buffer:         u32,
+	width:          int,
+	height:         int,
 	texture_handle: int,
 	allocator:      mem.Allocator,
 }
 
-create_framebufferobject :: proc(
+MAX_CANVAS :: 16
+canvas_array: [MAX_CANVAS]^FrameBufferObject
+canvas_count: int
+
+create_canvas :: proc() -> int {
+	if canvas_count > MAX_CANVAS - 1 {
+		logger(.ERROR, "Failed to create canvas, max canvas reached")
+		return -1
+	}
+	canvas_array[canvas_count] = _create_framebufferobject(window_width, window_height)
+	canvas_count += 1
+	return canvas_count - 1
+}
+
+@(private)
+get_canvas :: proc(canvas: int) -> ^FrameBufferObject {
+	if canvas < 0 || canvas > canvas_count {
+		// we want to return the default canvas, if -1 is used.
+		if canvas != -1 {
+			logger(
+				.ERROR,
+				"Failed to get canvas, out of bounds. Returning default canvas: want %d bound: %d",
+				canvas,
+				canvas_count,
+			)
+		}
+		return canvas_array[default_canvas]
+	}
+	return canvas_array[canvas]
+}
+
+present_canvas :: proc(
+	position: engine.Vector2,
+	scale: f64,
+	rotation: f64,
+	pivot: engine.Vector2,
+	canvas_handle: int,
+	color: engine.Color,
+	flip_x, flip_y: bool,
+	stretch_x, stretch_y: int,
+) {
+	c := get_canvas(canvas_handle)
+	draw_sprite(
+		position,
+		scale,
+		rotation,
+		pivot,
+		c.texture_handle,
+		engine.rect(0, 0, f64(c.width), f64(c.height)),
+		color,
+		flip_x,
+		flip_y,
+		stretch_x,
+		stretch_y,
+	)
+}
+
+
+destroy_all_canvas :: proc() {
+	for i in 0 ..< canvas_count {
+		destroy_framebufferobject(canvas_array[i])
+	}
+}
+
+attach_canvas :: proc(canvas: int) {
+	c := get_canvas(canvas)
+	attach_framebufferobject(c)
+}
+
+detach_canvas :: proc() {
+	attach_canvas(default_canvas)
+}
+
+
+_create_framebufferobject :: proc(
 	width, height: int,
 	allocator := context.allocator,
 ) -> ^FrameBufferObject {
@@ -1844,6 +1933,9 @@ create_framebufferobject :: proc(
 
 	fbo.texture_handle = create_texture(width, height, 4, 0, nil)
 	texture_data := get_texture(fbo.texture_handle)
+
+	fbo.width = width
+	fbo.height = height
 
 	// create frame buffers
 	gl.CreateFramebuffers(1, &fbo.buffer)
