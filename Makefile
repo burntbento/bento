@@ -12,6 +12,9 @@ build-example:
 run-all:
 	odin run ./examples/all $(flags)
 
+generate-version:
+	odin run ./scripts/generate_version.odin $(flags)
+
 test:
 	odin test ./tests --all-packages $(flags)
 
