@@ -75,6 +75,8 @@ engine_run :: proc(game_data: ^Game) {
 		free_mem               = platform.free_mem,
 	}
 
+	platform.logger(.DEBUG, "BENTO Version: %s", engine.get_version(context.temp_allocator))
+
 	input: engine.GameInput
 
 	game_data.game_init(&platform_data)
