@@ -1865,6 +1865,7 @@ create_canvas :: proc() -> int {
 @(private)
 get_canvas :: proc(canvas: int) -> ^FrameBufferObject {
 	if canvas < 0 || canvas > canvas_count {
+		// we want to return the default canvas, if -1 is used.
 		if canvas != -1 {
 			logger(
 				.ERROR,
