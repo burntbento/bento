@@ -23,7 +23,7 @@ main :: proc() {
 
 	version := ""
 	if arg != "clean" {
-		version = engine.create_version(context.temp_allocator)
+		version = engine.create_version(false, context.temp_allocator)
 	}
 
 	b := strings.builder_make(context.temp_allocator)
